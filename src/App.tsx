@@ -1,9 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { FontGrid } from "./components/FontGrid";
 import { FontDetailView } from "./components/FontDetailView";
-
 
 declare global {
   interface Window {
@@ -15,6 +14,11 @@ declare global {
       revealInFolder: (filePath: string) => Promise<void>;
       onScanProgress: (callback: (count: number) => void) => void;
       removeScanProgressListener: () => void;
+      versions: {
+        electron: string;
+        chrome: string;
+        node: string;
+      };
     };
   }
 }
@@ -32,26 +36,37 @@ function App() {
   const [fontSize, setFontSize] = useState(72);
   const [previewText, setPreviewText] = useState("");
 
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    const saved = localStorage.getItem('theme');
-    return (saved as 'light' | 'dark') || 'dark';
+  const [theme, setTheme] = useState<"light" | "dark">(() => {
+    const saved = localStorage.getItem("theme");
+    return (saved as "light" | "dark") || "dark";
   });
 
   useEffect(() => {
     const root = window.document.documentElement;
-    root.classList.remove('light', 'dark');
+    root.classList.remove("light", "dark");
     root.classList.add(theme);
-    localStorage.setItem('theme', theme);
+    localStorage.setItem("theme", theme);
   }, [theme]);
 
   const toggleTheme = () => {
-    setTheme(prev => prev === 'dark' ? 'light' : 'dark');
+    setTheme((prev) => (prev === "dark" ? "light" : "dark"));
   };
 
+  const loadFonts = useCallback(async () => {
+    if (window.api) {
+      const loaded = await window.api.getFonts();
+      setFonts(loaded);
+    }
+  }, []);
 
   useEffect(() => {
-    loadFonts();
+    const init = async () => {
+      await loadFonts();
+    };
+    init();
+  }, [loadFonts]);
 
+  useEffect(() => {
     // Set up scan progress listener
     if (window.api) {
       window.api.onScanProgress((count) => {
@@ -67,13 +82,6 @@ function App() {
     };
   }, []);
 
-  const loadFonts = async () => {
-    if (window.api) {
-      const loaded = await window.api.getFonts();
-      setFonts(loaded);
-    }
-  };
-
   const handleScan = async () => {
     setLoading(true);
     setScanningCount(0);
@@ -86,22 +94,23 @@ function App() {
 
   // Filter fonts based on search and category
   const filteredFonts = fonts.filter((font) => {
-    const matchesSearch = !searchQuery ||
+    const matchesSearch =
+      !searchQuery ||
       font.family.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesCategory = !selectedCategory ||
-      font.category === selectedCategory;
+    const matchesCategory =
+      !selectedCategory || font.category === selectedCategory;
 
-    const matchesView = selectedView === "all" ||
+    const matchesView =
+      selectedView === "all" ||
       (selectedView === "favorites" && font.is_favorite === 1);
 
     return matchesSearch && matchesCategory && matchesView;
   });
 
   // Find selected font data
-  const selectedFontData = selectedFont !== null
-    ? fonts.find(f => f.id === selectedFont)
-    : null;
+  const selectedFontData =
+    selectedFont !== null ? fonts.find((f) => f.id === selectedFont) : null;
 
   // Show detail view if font is selected
   if (selectedFontData) {
@@ -114,17 +123,15 @@ function App() {
   }
 
   return (
-    <div className="flex h-screen w-full bg-background text-foreground overflow-hidden font-sans">
+    <div className="bg-background text-foreground flex h-screen w-full overflow-hidden font-sans">
       <Sidebar
         selectedCategory={selectedCategory}
         onCategorySelect={setSelectedCategory}
         selectedView={selectedView}
         onViewSelect={setSelectedView}
-        theme={theme}
-        onToggleTheme={toggleTheme}
       />
 
-      <div className="flex flex-1 flex-col overflow-hidden min-w-0 bg-secondary/30 dark:bg-background">
+      <div className="bg-secondary/30 dark:bg-background flex min-w-0 flex-1 flex-col overflow-hidden">
         <Header
           onScan={handleScan}
           fontSize={fontSize}
@@ -137,7 +144,7 @@ function App() {
           onToggleTheme={toggleTheme}
         />
 
-        <main className="flex-1 relative flex flex-col min-w-0 overflow-hidden">
+        <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
           <FontGrid
             fonts={filteredFonts}
             selectedId={selectedFont}
@@ -149,24 +156,23 @@ function App() {
           />
 
           {loading && (
-            <div className="absolute inset-0 bg-background/50 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-background/50 absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
               <div className="flex flex-col items-center gap-2">
-                <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent"></div>
+                <div className="border-primary h-8 w-8 animate-spin rounded-full border-4 border-t-transparent"></div>
                 <p className="text-sm font-medium">Scanning fonts...</p>
               </div>
             </div>
           )}
         </main>
 
-        <footer className="h-10 border-t bg-background flex items-center justify-between px-6 text-[10px] font-medium tracking-widest text-muted-foreground uppercase">
+        <footer className="bg-background text-muted-foreground flex h-10 items-center justify-between border-t px-6 text-[10px] font-medium tracking-widest uppercase">
           <div className="flex gap-6">
             <span>
               {loading
                 ? `${scanningCount} files processed`
                 : filteredFonts.length !== fonts.length
                   ? `${filteredFonts.length} / ${fonts.length} Font Families`
-                  : `${fonts.length} Font Families`
-              }
+                  : `${fonts.length} Font Families`}
             </span>
           </div>
           <div className="flex items-center gap-4">

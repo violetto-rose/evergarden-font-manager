@@ -103,7 +103,9 @@ export function saveFont(fontData: FontData) {
 
 export function getAllFonts() {
   // Group fonts by family and aggregate variants
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT
       MIN(id) as id,
       family,
@@ -118,7 +120,9 @@ export function getAllFonts() {
     FROM fonts
     GROUP BY family
     ORDER BY family ASC
-  `).all();
+  `
+    )
+    .all();
 }
 
 export function getFontByPath(filePath: string) {
@@ -136,7 +140,9 @@ export function toggleFavorite(family: string, isFavorite: boolean) {
 }
 
 export function getFavorites() {
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT
       MIN(id) as id,
       family,
@@ -150,11 +156,15 @@ export function getFavorites() {
     WHERE is_favorite = 1
     GROUP BY family
     ORDER BY family ASC
-  `).all();
+  `
+    )
+    .all();
 }
 
 export function getFontVariants(family: string) {
-  return db.prepare(`
+  return db
+    .prepare(
+      `
     SELECT *
     FROM fonts
     WHERE family = ?
@@ -168,5 +178,7 @@ export function getFontVariants(family: string) {
         ELSE 6
       END,
       subfamily ASC
-  `).all(family);
+  `
+    )
+    .all(family);
 }

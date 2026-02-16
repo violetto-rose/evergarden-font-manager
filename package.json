@@ -3,6 +3,7 @@
   "private": true,
   "version": "1.0.0",
   "main": "dist-electron/main.js",
+  "type": "module",
   "scripts": {
     "rebuild": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3",
@@ -12,7 +13,9 @@
     "build": "npm run rebuild && tsc && vite build && tsc -p electron/tsconfig.json",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "dist": "npm run build && electron-builder --win",
+    "dist:portable": "npm run build && electron-builder --win portable"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -63,8 +66,14 @@
     "vite": "^7.3.1",
     "wait-on": "^9.0.3"
   },
+  "description": "A modern, local font manager for creative professionals.",
+  "author": {
+    "name": "Manju Madhav V A",
+    "email": "manjumadhav.va@gmail.com"
+  },
   "build": {
     "appId": "com.evergarden.fontmanager",
+    "productName": "Evergarden Font Manager",
     "directories": {
       "output": "release"
     },
@@ -73,8 +82,25 @@
       "dist-electron/**/*",
       "package.json"
     ],
+    "asar": true,
+    "asarUnpack": [
+      "**/*.node",
+      "**/better-sqlite3/**"
+    ],
     "win": {
       "target": "nsis"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "mac": {
+      "target": "dmg",
+      "category": "public.app-category.typography"
+    },
+    "linux": {
+      "target": "AppImage",
+      "category": "Graphics"
     }
   }
 }

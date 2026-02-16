@@ -1,5 +1,5 @@
-import { FixedSizeGrid as Grid } from 'react-window';
-import { AutoSizer } from 'react-virtualized-auto-sizer';
+import { FixedSizeGrid as Grid } from "react-window";
+import { AutoSizer } from "react-virtualized-auto-sizer";
 import { FontCard } from "./FontCard";
 
 interface Font {
@@ -41,9 +41,10 @@ export function FontGrid({
   }
 
   return (
-    <div className="flex-1 w-full h-full">
-      <AutoSizer
-        renderProp={({ height, width }) => {
+    <div className="h-full w-full flex-1">
+      {/* @ts-expect-error AutoSizer type mismatch in v2 */}
+      <AutoSizer>
+        {({ height, width }: { height: number; width: number }) => {
           // Handle undefined dimensions during initial render
           if (!height || !width) return null;
 
@@ -80,13 +81,22 @@ export function FontGrid({
             </Grid>
           );
         }}
-      />
+      </AutoSizer>
     </div>
   );
 }
 
 const Cell = ({ columnIndex, rowIndex, style, data }: any) => {
-  const { fonts, columnCount, selectedId, onSelect, fontSize, previewText, features, onFontsChange } = data;
+  const {
+    fonts,
+    columnCount,
+    selectedId,
+    onSelect,
+    fontSize,
+    previewText,
+    features,
+    onFontsChange,
+  } = data;
   const index = rowIndex * columnCount + columnIndex;
 
   if (index >= fonts.length) {

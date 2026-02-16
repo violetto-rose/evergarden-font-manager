@@ -1,18 +1,19 @@
-import { getAllFonts, saveFont } from "./database";
 import { categorizeFontFamily } from "./categorization";
 
 /**
  * Migrates existing fonts in the database to add category information
  */
-export function migrateFontsWithCategories() {
+export async function migrateFontsWithCategories() {
   console.log("Starting category migration...");
 
   // Get all fonts (this will get individual font files, not grouped)
-  const db = require("better-sqlite3")(
-    require("path").join(require("electron").app.getPath("userData"), "fonts.db")
-  );
+  const path = await import("path");
+  const { app } = await import("electron");
+  const Database = (await import("better-sqlite3")).default;
 
-  const allFonts = db.prepare("SELECT * FROM fonts").all();
+  const db = new Database(path.join(app.getPath("userData"), "fonts.db"));
+
+  const allFonts: any[] = db.prepare("SELECT * FROM fonts").all();
 
   let updated = 0;
   for (const font of allFonts) {
@@ -26,11 +27,13 @@ export function migrateFontsWithCategories() {
     );
 
     // Update the font with category info
-    db.prepare(`
+    db.prepare(
+      `
       UPDATE fonts
       SET category = ?, subcategory = ?
       WHERE id = ?
-    `).run(category, subcategory, font.id);
+    `
+    ).run(category, subcategory, font.id);
 
     updated++;
   }

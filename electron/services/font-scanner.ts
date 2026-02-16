@@ -67,7 +67,9 @@ function extractOpenTypeFeatures(font: any): string[] {
   try {
     // 1. Check font.availableFeatures (fontkit getter)
     if (font.availableFeatures) {
-      font.availableFeatures.forEach((feature: string) => features.add(feature.trim()));
+      font.availableFeatures.forEach((feature: string) =>
+        features.add(feature.trim())
+      );
     }
 
     // 2. Fallback: Parse GSUB if not already found
@@ -87,7 +89,7 @@ function extractOpenTypeFeatures(font: any): string[] {
     console.error("Error extracting OpenType features:", e);
   }
 
-  return Array.from(features).filter(f => f && f.length > 0);
+  return Array.from(features).filter((f) => f && f.length > 0);
 }
 
 // Exported for Watcher
@@ -107,26 +109,47 @@ export async function processFontFile(
 
     const isMonospace = fontObj.post?.isFixedPitch || 0;
 
-    const cleanStr = (s: any) => (typeof s === "string" ? s.replace(/\0/g, "").trim() : "");
+    const cleanStr = (s: any) =>
+      typeof s === "string" ? s.replace(/\0/g, "").trim() : "";
 
     let familyName = cleanStr(fontObj.preferredFamily || fontObj.familyName);
-    const subfamilyName = cleanStr(fontObj.preferredSubfamily || fontObj.subfamilyName);
+    const subfamilyName = cleanStr(
+      fontObj.preferredSubfamily || fontObj.subfamilyName
+    );
 
     // Heuristic 1: If family name ends with subfamily name (e.g. "Arial Bold" and "Bold"), strip it
-    if (subfamilyName && familyName.toLowerCase().endsWith(" " + subfamilyName.toLowerCase())) {
+    if (
+      subfamilyName &&
+      familyName.toLowerCase().endsWith(" " + subfamilyName.toLowerCase())
+    ) {
       familyName = familyName.slice(0, -subfamilyName.length - 1).trim();
     }
 
     // Heuristic 2: Strip common style suffixes from family name
     // This handles cases where family name equals "FontName Medium" but subfamily is "Regular"
     const styleSuffixes = [
-      "ExtraLight", "Extra Light", "Thin", "Light",
-      "Medium", "SemiBold", "Semi Bold", "Semibold", "DemiBold", "Demi Bold",
-      "Bold", "ExtraBold", "Extra Bold", "UltraBold", "Ultra Bold",
-      "Black", "Heavy",
-      "Italic", "Oblique",
+      "ExtraLight",
+      "Extra Light",
+      "Thin",
+      "Light",
+      "Medium",
+      "SemiBold",
+      "Semi Bold",
+      "Semibold",
+      "DemiBold",
+      "Demi Bold",
+      "Bold",
+      "ExtraBold",
+      "Extra Bold",
+      "UltraBold",
+      "Ultra Bold",
+      "Black",
+      "Heavy",
+      "Italic",
+      "Oblique",
       "Regular",
-      "Condensed", "Expanded"
+      "Condensed",
+      "Expanded",
     ];
 
     // Sort by length to match longest suffixes first
@@ -136,6 +159,7 @@ export async function processFontFile(
     while (stripped) {
       stripped = false;
       for (const suffix of styleSuffixes) {
+        // Escape special characters in suffix if any (though these are mostly alphabetic)
         const regex = new RegExp(`\\s+${suffix}$`, "i");
         if (regex.test(familyName)) {
           familyName = familyName.replace(regex, "").trim();
@@ -187,7 +211,9 @@ export async function processFontFile(
   }
 }
 
-export async function scanFonts(onProgress?: (count: number) => void): Promise<FontMetadata[]> {
+export async function scanFonts(
+  onProgress?: (count: number) => void
+): Promise<FontMetadata[]> {
   const dirs = getSystemFontDirectories();
   const foundFonts: FontMetadata[] = [];
 

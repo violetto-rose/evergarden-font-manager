@@ -2,13 +2,15 @@
   "compilerOptions": {
     "target": "ESNext",
     "composite": true,
-    "module": "commonjs",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
     "outDir": "../dist-electron",
     "rootDir": ".",
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
-    "forceConsistentCasingInFileNames": true
+    "forceConsistentCasingInFileNames": true,
+    "allowSyntheticDefaultImports": true
   },
-  "include": ["."]
+  "include": [".", "types.d.ts"]
 }
