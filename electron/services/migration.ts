@@ -1,3 +1,6 @@
+import path from "path";
+import { app } from "electron";
+import Database from "better-sqlite3";
 import { categorizeFontFamily } from "./categorization";
 
 /**
@@ -5,11 +8,6 @@ import { categorizeFontFamily } from "./categorization";
  */
 export async function migrateFontsWithCategories() {
   console.log("Starting category migration...");
-
-  // Get all fonts (this will get individual font files, not grouped)
-  const path = await import("path");
-  const { app } = await import("electron");
-  const Database = (await import("better-sqlite3")).default;
 
   const db = new Database(path.join(app.getPath("userData"), "fonts.db"));
 
@@ -39,5 +37,6 @@ export async function migrateFontsWithCategories() {
   }
 
   console.log(`Category migration complete: ${updated} fonts updated`);
+  db.close();
   return updated;
 }

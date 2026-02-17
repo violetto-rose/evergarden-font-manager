@@ -3,19 +3,22 @@
   "private": true,
   "version": "1.0.0",
   "main": "dist-electron/main.js",
-  "type": "module",
+  "license": "MIT",
   "scripts": {
     "rebuild": "electron-rebuild -f -w better-sqlite3",
     "postinstall": "electron-rebuild -f -w better-sqlite3",
-    "dev": "npm run rebuild && concurrently -k \"npm run dev:react\" \"npm run dev:electron\"",
+    "dev": "npm run build:electron && concurrently -k \"npm run dev:react\" \"npm run dev:electron\"",
     "dev:react": "vite",
-    "dev:electron": "wait-on tcp:5173 && tsc -p electron/tsconfig.json && electron .",
-    "build": "npm run rebuild && tsc && vite build && tsc -p electron/tsconfig.json",
+    "dev:electron": "wait-on tcp:5173 && electron .",
+    "icons": "electron-icon-builder -i assets/icon-1024.png -o build -f",
+    "prebuild": "npm run icons",
+    "build:electron": "tsup electron/main.ts electron/preload.ts --out-dir dist-electron --format cjs --external electron,better-sqlite3,fontkit,chokidar,electron-squirrel-startup --no-splitting --clean",
+    "build": "npm run rebuild && npm run build:electron && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
     "format": "prettier --write .",
-    "dist": "npm run build && electron-builder --win",
-    "dist:portable": "npm run build && electron-builder --win portable"
+    "dist": "npm run build && electron-builder --win --publish never --config.directories.output=release/installer",
+    "dist:portable": "npm run build && electron-builder --win portable --publish never --config.directories.output=release/portable"
   },
   "dependencies": {
     "@radix-ui/react-dialog": "^1.1.15",
@@ -52,6 +55,7 @@
     "concurrently": "^9.2.1",
     "electron": "^40.2.1",
     "electron-builder": "^26.7.0",
+    "electron-icon-builder": "^2.0.1",
     "electron-rebuild": "^3.2.9",
     "eslint": "^9.39.2",
     "eslint-plugin-react-hooks": "^7.0.1",
@@ -61,6 +65,7 @@
     "prettier": "^3.8.1",
     "prettier-plugin-tailwindcss": "^0.7.2",
     "tailwindcss": "^4.1.18",
+    "tsup": "^8.4.0",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.55.0",
     "vite": "^7.3.1",
@@ -74,8 +79,10 @@
   "build": {
     "appId": "com.evergarden.fontmanager",
     "productName": "Evergarden Font Manager",
+    "publish": null,
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "files": [
       "dist/**/*",
@@ -88,7 +95,8 @@
       "**/better-sqlite3/**"
     ],
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": false,
@@ -96,11 +104,13 @@
     },
     "mac": {
       "target": "dmg",
-      "category": "public.app-category.typography"
+      "category": "public.app-category.typography",
+      "icon": "build/icon.icns"
     },
     "linux": {
       "target": "AppImage",
-      "category": "Graphics"
+      "category": "Graphics",
+      "icon": "build/icon.png"
     }
   }
 }

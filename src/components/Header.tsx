@@ -168,23 +168,23 @@ export function Header({
                     <div className="flex justify-between">
                       <span>Electron</span>
                       <span className="font-mono">
-                        {window.api?.versions?.electron ||
-                          process?.versions?.electron ||
-                          "Unknown"}
+                        {window.api?.versions?.electron || "Unknown"}
                       </span>
                     </div>
                     <div className="mt-2 flex flex-col items-center gap-1 border-t pt-2">
                       <span className="opacity-50">
                         Evergarden Font Manager
                       </span>
-                      <a
-                        href="#"
-                        className="hover:text-primary opacity-70 transition-colors hover:opacity-100"
-                      >
-                        Made with love by Violet
-                      </a>
                     </div>
                   </div>
+                  <a
+                    href="https://github.com/violetto-rose/evergarden-font-manager"
+                    target="_blank"
+                    rel="noreferrer noopener"
+                    className="text-muted-foreground hover:text-primary mt-1 block w-full text-center text-[10px] uppercase tracking-widest transition-colors"
+                  >
+                    Made with ❤️ by Violet
+                  </a>
                 </div>
               </div>
             </DialogContent>

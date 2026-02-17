@@ -605,7 +605,7 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                         <dt className="text-muted-foreground font-mono text-xs">
                           File Path
                         </dt>
-                        <dd className="mt-1 text-xs break-all">
+                        <dd className="mt-1 break-all">
                           {currentFont.file_path}
                         </dd>
                       </div>

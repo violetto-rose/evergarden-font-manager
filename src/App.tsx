@@ -131,7 +131,7 @@ function App() {
         onViewSelect={setSelectedView}
       />
 
-      <div className="bg-secondary/30 dark:bg-background flex min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="bg-secondary/30 dark:bg-background flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden">
         <Header
           onScan={handleScan}
           fontSize={fontSize}
@@ -144,7 +144,7 @@ function App() {
           onToggleTheme={toggleTheme}
         />
 
-        <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden">
+        <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden min-h-0">
           <FontGrid
             fonts={filteredFonts}
             selectedId={selectedFont}

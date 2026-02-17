@@ -118,6 +118,7 @@ typings/
 dist
 dist-electron
 release
+build/
 
 # OS
 .DS_Store

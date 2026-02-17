@@ -73,6 +73,7 @@ export const FontCard = memo(
         >
           <div className="mb-8 flex items-start justify-between">
             <button
+              title="Favourite"
               onClick={async (e) => {
                 e.stopPropagation();
                 const newState = !isFavorite;
@@ -109,6 +110,8 @@ export const FontCard = memo(
               fontFamily: `'${fontId}', sans-serif`, // Fallback
               fontSize: `${fontSize}px`,
               fontFeatureSettings: featureSettings,
+              textRendering: "geometricPrecision",
+              fontKerning: "normal",
               opacity: 1,
               isolation: "isolate",
             }}
