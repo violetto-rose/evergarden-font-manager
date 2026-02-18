@@ -36,12 +36,17 @@ jobs:
       - name: Build installer
         run: npm run dist
 
+      - name: Build portable
+        run: npm run dist:portable
+
       - name: Create GitHub Release and upload installer
         uses: softprops/action-gh-release@v2
         with:
           draft: true
           files: |
-            release/*.exe
-            release/*.blockmap
+            release/installer/*.exe
+            release/installer/*.blockmap
+            release/portable/*.exe
+            release/portable/*.blockmap
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
