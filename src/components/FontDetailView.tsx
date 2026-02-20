@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
+import logo from "../../assets/logo.svg";
 
 interface FontDetailViewProps {
   font: any;
@@ -204,9 +205,7 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
       <header className="bg-background flex h-14 shrink-0 items-center justify-between border-b px-4">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
-            <span className="text-xl font-bold tracking-tighter">
-              Evergarden
-            </span>
+            <img src={logo} alt="Evergarden" className="h-8 w-auto" />
             <div className="bg-border mx-2 h-4 w-px"></div>
             <Button
               variant="ghost"

@@ -1,4 +1,5 @@
 import { Button } from "@/components/ui/button";
+import logo from "../../assets/logo.svg";
 import {
   Grid,
   Clock,
@@ -26,7 +27,9 @@ export function Sidebar({
   return (
     <aside className="bg-background hidden h-full w-64 flex-col border-r md:flex">
       <div className="p-6">
-        <h1 className="mb-8 text-2xl font-bold tracking-tighter">Evergarden</h1>
+        <div className="mb-8 flex items-center">
+          <img src={logo} alt="Evergarden" className="h-12 w-auto" />
+        </div>
 
         <nav className="space-y-6">
           <div>
