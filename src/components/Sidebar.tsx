@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import logo from "../../assets/logo.svg";
 import {
@@ -9,30 +10,95 @@ import {
   Monitor,
   PenTool,
   Code,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
+
+/** Category + subcategories (matches font-metadata-bridge taxonomy). Handwriting = Cursive in DB. */
+const CATEGORIES: {
+  value: string;
+  label: string;
+  icon: typeof Type;
+  subcategories: string[];
+}[] = [
+  {
+    value: "Serif",
+    label: "Serif",
+    icon: Type,
+    subcategories: ["Slab Serif", "Old Style", "Transitional", "Didone"],
+  },
+  {
+    value: "Sans Serif",
+    label: "Sans Serif",
+    icon: Monitor,
+    subcategories: [
+      "Geometric",
+      "Humanist",
+      "Grotesque",
+      "Neo-Grotesque",
+    ],
+  },
+  {
+    value: "Display",
+    label: "Display",
+    icon: List,
+    subcategories: ["Decorative", "Blackletter", "Stencil"],
+  },
+  {
+    value: "Cursive",
+    label: "Handwriting",
+    icon: PenTool,
+    subcategories: ["Script", "Handwriting"],
+  },
+  {
+    value: "Monospace",
+    label: "Monospace",
+    icon: Code,
+    subcategories: [], // all are code; no subcategory filter
+  },
+];
 
 interface SidebarProps {
   selectedCategory: string | null;
-  onCategorySelect: (category: string | null) => void;
+  selectedSubcategory: string | null;
+  onFilterSelect: (category: string | null, subcategory: string | null) => void;
   selectedView: string;
   onViewSelect: (view: string) => void;
+  categoryCounts?: Record<string, number>;
+  subcategoryCounts?: Record<string, Record<string, number>>;
 }
 
 export function Sidebar({
   selectedCategory,
-  onCategorySelect,
+  selectedSubcategory,
+  onFilterSelect,
   selectedView,
   onViewSelect,
+  categoryCounts = {},
+  subcategoryCounts = {},
 }: SidebarProps) {
+  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
+    () => new Set() // collapsed by default
+  );
+
+  const toggleExpanded = (value: string) => {
+    setExpandedCategories((prev) => {
+      const next = new Set(prev);
+      if (next.has(value)) next.delete(value);
+      else next.add(value);
+      return next;
+    });
+  };
+
   return (
     <aside className="bg-background hidden h-full w-64 flex-col border-r md:flex">
-      <div className="p-6">
-        <div className="mb-8 flex items-center">
+      <div className="flex min-h-0 flex-1 flex-col p-6">
+        <div className="mb-6 flex shrink-0 items-center">
           <img src={logo} alt="Evergarden" className="h-12 w-auto" />
         </div>
 
-        <nav className="space-y-6">
-          <div>
+        <nav className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden">
+          <div className="shrink-0">
             <p className="text-muted-foreground mb-4 text-[10px] font-semibold tracking-widest uppercase">
               Library
             </p>
@@ -47,7 +113,7 @@ export function Sidebar({
                   className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-9 w-full justify-start gap-3 px-3 font-medium"
                   onClick={() => {
                     onViewSelect("all");
-                    onCategorySelect(null);
+                    onFilterSelect(null, null);
                   }}
                 >
                   <Grid className="h-4 w-4" />
@@ -70,7 +136,7 @@ export function Sidebar({
                   className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-9 w-full justify-start gap-3 px-3 font-medium"
                   onClick={() => {
                     onViewSelect("favorites");
-                    onCategorySelect(null);
+                    onFilterSelect(null, null);
                   }}
                 >
                   <Heart className="h-4 w-4" />
@@ -80,69 +146,79 @@ export function Sidebar({
             </ul>
           </div>
 
-          <div>
-            <p className="text-muted-foreground mb-4 text-[10px] font-semibold tracking-widest uppercase">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+            <p className="text-muted-foreground mb-4 shrink-0 text-[10px] font-semibold tracking-widest uppercase">
               Categories
             </p>
-            <ul className="space-y-1">
-              <li>
-                <Button
-                  variant={selectedCategory === "Serif" ? "secondary" : "ghost"}
-                  className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-9 w-full justify-start gap-3 px-3"
-                  onClick={() => onCategorySelect("Serif")}
-                >
-                  <Type className="h-4 w-4" />
-                  Serif
-                </Button>
-              </li>
-              <li>
-                <Button
-                  variant={
-                    selectedCategory === "Sans Serif" ? "secondary" : "ghost"
-                  }
-                  className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-9 w-full justify-start gap-3 px-3"
-                  onClick={() => onCategorySelect("Sans Serif")}
-                >
-                  <Monitor className="h-4 w-4" />
-                  Sans Serif
-                </Button>
-              </li>
-              <li>
-                <Button
-                  variant={
-                    selectedCategory === "Display" ? "secondary" : "ghost"
-                  }
-                  className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-9 w-full justify-start gap-3 px-3"
-                  onClick={() => onCategorySelect("Display")}
-                >
-                  <List className="h-4 w-4" />
-                  Display
-                </Button>
-              </li>
-              <li>
-                <Button
-                  variant={
-                    selectedCategory === "Monospace" ? "secondary" : "ghost"
-                  }
-                  className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-9 w-full justify-start gap-3 px-3"
-                  onClick={() => onCategorySelect("Monospace")}
-                >
-                  <Code className="h-4 w-4" />
-                  Monospace
-                </Button>
-              </li>
-              <li>
-                <Button
-                  variant={
-                    selectedCategory === "Cursive" ? "secondary" : "ghost"
-                  }
-                  className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-9 w-full justify-start gap-3 px-3"
-                  onClick={() => onCategorySelect("Cursive")}
-                >
-                  <PenTool className="h-4 w-4" />
-                  Cursive
-                </Button>
-              </li>
+            <ul className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
+              {CATEGORIES.map(({ value, label, icon: Icon, subcategories }) => {
+                const isExpanded = expandedCategories.has(value);
+                const isCategorySelected = selectedCategory === value;
+                const catCount = categoryCounts[value] ?? 0;
+                const subCounts = subcategoryCounts[value] ?? {};
+
+                return (
+                  <li key={value} className="space-y-2">
+                    <button
+                      type="button"
+                      className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm font-medium transition-colors"
+                      onClick={() => toggleExpanded(value)}
+                    >
+                      {isExpanded ? (
+                        <ChevronDown className="h-4 w-4 shrink-0" />
+                      ) : (
+                        <ChevronRight className="h-4 w-4 shrink-0" />
+                      )}
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="min-w-0 flex-1 truncate">{label}</span>
+                      {catCount > 0 && (
+                        <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
+                          {catCount}
+                        </span>
+                      )}
+                    </button>
+
+                    {isExpanded && (
+                      <div className="flex flex-wrap gap-1.5 pl-6">
+                        <Button
+                          size="sm"
+                          variant={
+                            isCategorySelected && selectedSubcategory === null
+                              ? "secondary"
+                              : "outline"
+                          }
+                          className="h-7 rounded-md px-2.5 text-xs font-normal"
+                          onClick={() => onFilterSelect(value, null)}
+                        >
+                          All
+                        </Button>
+                        {subcategories.map((sub) => {
+                          const count = subCounts[sub] ?? 0;
+                          const isSelected =
+                            isCategorySelected &&
+                            selectedSubcategory === sub;
+                          return (
+                            <Button
+                              key={sub}
+                              size="sm"
+                              variant={isSelected ? "secondary" : "outline"}
+                              className="h-7 rounded-md px-2.5 text-xs font-normal"
+                              onClick={() => onFilterSelect(value, sub)}
+                            >
+                              {sub}
+                              {count > 0 && (
+                                <span className="text-muted-foreground ml-1 tabular-nums">
+                                  {count}
+                                </span>
+                              )}
+                            </Button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           </div>
         </nav>

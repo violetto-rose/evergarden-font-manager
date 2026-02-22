@@ -125,9 +125,14 @@ export async function processFontFile(
       familyName = familyName.slice(0, -subfamilyName.length - 1).trim();
     }
 
-    // Heuristic 2: Strip common style suffixes from family name
-    // This handles cases where family name equals "FontName Medium" but subfamily is "Regular"
+    // Heuristic 2: Strip style/weight/width/legal suffixes so "ABC Ginto Nord Condensed Unlicensed Trial" -> "ABC Ginto Nord"
     const styleSuffixes = [
+      "Unlicensed Trial",
+      "Unlicensed",
+      "Trial",
+      "Personal Use",
+      "Demo",
+      "Free",
       "ExtraLight",
       "Extra Light",
       "Thin",
@@ -148,8 +153,14 @@ export async function processFontFile(
       "Italic",
       "Oblique",
       "Regular",
+      "Normal",
       "Condensed",
+      "Compressed",
       "Expanded",
+      "Extended",
+      "Narrow",
+      "Wide",
+      "Nord",  // e.g. "ABC Ginto Nord" -> "ABC Ginto"
     ];
 
     // Sort by length to match longest suffixes first
@@ -159,7 +170,6 @@ export async function processFontFile(
     while (stripped) {
       stripped = false;
       for (const suffix of styleSuffixes) {
-        // Escape special characters in suffix if any (though these are mostly alphabetic)
         const regex = new RegExp(`\\s+${suffix}$`, "i");
         if (regex.test(familyName)) {
           familyName = familyName.replace(regex, "").trim();
@@ -169,11 +179,46 @@ export async function processFontFile(
       }
     }
 
+    // Also strip width/legal/design suffixes without leading space (e.g. "AdriannaExtended", "GintoNordUnlicensedTrial")
+    const noSpaceSuffixes = [
+      "UnlicensedTrial",
+      "Unlicensed",
+      "Trial",
+      "Extended",
+      "Condensed",
+      "Compressed",
+      "Expanded",
+      "Narrow",
+      "Wide",
+    ];
+    let noSpaceStripped = true;
+    while (noSpaceStripped) {
+      noSpaceStripped = false;
+      for (const suffix of noSpaceSuffixes) {
+        const suf = suffix.toLowerCase();
+        const fam = familyName.toLowerCase();
+        if (
+          familyName.length > suffix.length &&
+          fam.endsWith(suf) &&
+          /[a-z]/.test(familyName[familyName.length - suffix.length - 1])
+        ) {
+          familyName = familyName.slice(0, -suffix.length).trim();
+          noSpaceStripped = true;
+          break;
+        }
+      }
+    }
+
+    // Always use heuristic so paid/demo/unknown fonts get classified; bridge is for reference only
     const { category, subcategory } = categorizeFontFamily(
       familyName,
       subfamilyName,
       isMonospace
     );
+
+    // Read OS/2 weight (100–900) when available
+    const os2 = fontObj["OS/2"] ?? fontObj.os2;
+    const weight = os2?.usWeightClass != null ? Number(os2.usWeightClass) : 400;
 
     const metadata: FontMetadata = {
       file_path: filePath,
@@ -182,7 +227,7 @@ export async function processFontFile(
       subfamily: subfamilyName,
       full_name: (fontObj.fullName || "").trim(),
       postscript_name: fontObj.postscriptName,
-      weight: 400,
+      weight: Math.min(900, Math.max(1, weight)) || 400,
       width: 5,
       italic: fontObj.italicAngle !== 0 ? 1 : 0,
       monospace: isMonospace,

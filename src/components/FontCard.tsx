@@ -7,6 +7,7 @@ interface Font {
   family: string;
   subfamily: string;
   file_path: string;
+  preview_file_path?: string | null;
   metadata_json: string;
   variant_count?: number;
   category?: string;
@@ -37,9 +38,10 @@ export const FontCard = memo(
     const fontId = `font-${font.id}`;
     const [isFavorite, setIsFavorite] = useState(!!font.is_favorite);
 
+    const previewPath = font.preview_file_path || font.file_path;
     const fontFaceStyle = useMemo(() => {
-      // Escaping backslashes for Windows paths
-      const url = `file://${font.file_path.replace(/\\/g, "/")}`;
+      // Escaping backslashes for Windows paths; prefer Regular variant for preview
+      const url = `file://${previewPath.replace(/\\/g, "/")}`;
       return (
         <style key={fontId}>
           {`
@@ -51,7 +53,7 @@ export const FontCard = memo(
             `}
         </style>
       );
-    }, [font.file_path, fontId]);
+    }, [previewPath, fontId]);
 
     const featureSettings = useMemo(() => {
       return Object.entries(features)

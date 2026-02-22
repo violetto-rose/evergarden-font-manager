@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import { FixedSizeGrid as Grid } from "react-window";
 import { AutoSizer, type AutoSizerChildProps } from "react-virtualized-auto-sizer";
 import { FontCard } from "./FontCard";
@@ -21,6 +21,66 @@ interface FontGridProps {
   onFontsChange?: () => void;
 }
 
+// Stable component reference so AutoSizer never remounts the grid (preserves scroll)
+function makeGridChild(
+  propsRef: React.MutableRefObject<{
+    itemData: ReturnType<typeof makeItemData>;
+    itemKey: (args: { rowIndex: number; columnIndex: number; data: any }) => any;
+    fontsLength: number;
+  }>
+) {
+  return function GridChild({ height, width }: AutoSizerChildProps) {
+    const { itemData, itemKey, fontsLength } = propsRef.current;
+    if (!height || !width) return null;
+
+    const scrollbarWidth = 17;
+    const availableWidth = width - scrollbarWidth;
+    const minColumnWidth = 300;
+    const columnCount = Math.floor(availableWidth / minColumnWidth) || 1;
+    const columnWidth = Math.floor(availableWidth / columnCount);
+    const rowCount = Math.ceil(fontsLength / columnCount);
+    const rowHeight = 320;
+    const gridData = { ...itemData, columnCount };
+
+    return (
+      <Grid
+        columnCount={columnCount}
+        columnWidth={columnWidth}
+        rowCount={rowCount}
+        rowHeight={rowHeight}
+        height={height}
+        width={width}
+        itemData={gridData}
+        itemKey={itemKey}
+        overscanRowCount={2}
+        overscanColumnCount={1}
+      >
+        {Cell}
+      </Grid>
+    );
+  };
+}
+
+function makeItemData(
+  fonts: Font[],
+  selectedId: number | null,
+  onSelect: (id: number) => void,
+  fontSize: number,
+  previewText: string,
+  features: Record<string, boolean>,
+  onFontsChange?: () => void
+) {
+  return {
+    fonts,
+    selectedId,
+    onSelect,
+    fontSize,
+    previewText,
+    features,
+    onFontsChange,
+  };
+}
+
 export function FontGrid({
   fonts,
   selectedId,
@@ -31,15 +91,16 @@ export function FontGrid({
   onFontsChange,
 }: FontGridProps) {
   const itemData = useMemo(
-    () => ({
-      fonts,
-      selectedId,
-      onSelect,
-      fontSize,
-      previewText,
-      features,
-      onFontsChange,
-    }),
+    () =>
+      makeItemData(
+        fonts,
+        selectedId,
+        onSelect,
+        fontSize,
+        previewText,
+        features,
+        onFontsChange
+      ),
     [
       fonts,
       selectedId,
@@ -59,7 +120,7 @@ export function FontGrid({
     }: {
       rowIndex: number;
       columnIndex: number;
-      data: typeof itemData & { columnCount: number };
+      data: ReturnType<typeof makeItemData> & { columnCount: number };
     }) => {
       const index = rowIndex * data.columnCount + columnIndex;
       const font = data.fonts[index];
@@ -68,43 +129,12 @@ export function FontGrid({
     []
   );
 
-  const renderGrid = useCallback(
-    ({ height, width }: AutoSizerChildProps) => {
-      if (!height || !width) return null;
+  const propsRef = useRef({ itemData, itemKey, fontsLength: fonts.length });
+  propsRef.current = { itemData, itemKey, fontsLength: fonts.length };
 
-      // Account for scrollbar width (typically 15-17px on Windows)
-      const scrollbarWidth = 17;
-      const availableWidth = width - scrollbarWidth;
-
-      const minColumnWidth = 300;
-      const columnCount = Math.floor(availableWidth / minColumnWidth) || 1;
-      const columnWidth = Math.floor(availableWidth / columnCount);
-      const rowCount = Math.ceil(fonts.length / columnCount);
-      const rowHeight = 320;
-
-      const gridData = {
-        ...itemData,
-        columnCount,
-      };
-
-      return (
-        <Grid
-          columnCount={columnCount}
-          columnWidth={columnWidth}
-          rowCount={rowCount}
-          rowHeight={rowHeight}
-          height={height}
-          width={width}
-          itemData={gridData}
-          itemKey={itemKey}
-          overscanRowCount={2}
-          overscanColumnCount={1}
-        >
-          {Cell}
-        </Grid>
-      );
-    },
-    [fonts.length, itemData, itemKey]
+  const GridChild = useMemo(
+    () => makeGridChild(propsRef),
+    [] // stable: same component type every time so AutoSizer never remounts
   );
 
   if (fonts.length === 0) {
@@ -122,7 +152,7 @@ export function FontGrid({
     <div className="flex-1 min-h-0 min-w-0">
       <AutoSizer
         style={{ height: "100%", width: "100%" }}
-        ChildComponent={renderGrid}
+        ChildComponent={GridChild}
       />
     </div>
   );

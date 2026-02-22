@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { FontGrid } from "./components/FontGrid";
@@ -29,8 +29,14 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [scanningCount, setScanningCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [categoryFilter, setCategoryFilter] = useState<{
+    category: string | null;
+    subcategory: string | null;
+  }>({ category: null, subcategory: null });
   const [selectedView, setSelectedView] = useState("all");
+
+  const selectedCategory = categoryFilter.category;
+  const selectedSubcategory = categoryFilter.subcategory;
 
   // UI State
   const [fontSize, setFontSize] = useState(72);
@@ -82,58 +88,111 @@ function App() {
     };
   }, []);
 
+  const [rebuildDoneAt, setRebuildDoneAt] = useState<number | null>(null);
+
   const handleScan = async () => {
     setLoading(true);
     setScanningCount(0);
     if (window.api) {
       await window.api.scanFonts();
       loadFonts();
+      setRebuildDoneAt(Date.now());
     }
     setLoading(false);
   };
 
-  // Filter fonts based on search and category
-  const filteredFonts = fonts.filter((font) => {
-    const matchesSearch =
-      !searchQuery ||
-      font.family.toLowerCase().includes(searchQuery.toLowerCase());
+  // Filter fonts based on search and category (normalize null/empty, case-insensitive)
+  const filteredFonts = useMemo(
+    () =>
+      fonts.filter((font) => {
+        const matchesSearch =
+          !searchQuery ||
+          font.family.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesCategory =
-      !selectedCategory || font.category === selectedCategory;
+        const fontCategory = (font.category ?? "").trim().toLowerCase();
+        const fontSubcategory = (font.subcategory ?? "").trim().toLowerCase();
+        const selCat = (selectedCategory ?? "").toLowerCase();
+        const selSub = (selectedSubcategory ?? "").toLowerCase();
+        const matchesCategory = !selectedCategory || fontCategory === selCat;
+        const matchesSubcategory =
+          !selectedSubcategory || fontSubcategory === selSub;
 
-    const matchesView =
-      selectedView === "all" ||
-      (selectedView === "favorites" && font.is_favorite === 1);
+        const matchesView =
+          selectedView === "all" ||
+          (selectedView === "favorites" && font.is_favorite === 1);
 
-    return matchesSearch && matchesCategory && matchesView;
-  });
+        return (
+          matchesSearch &&
+          matchesCategory &&
+          matchesSubcategory &&
+          matchesView
+        );
+      }),
+    [
+      fonts,
+      searchQuery,
+      selectedCategory,
+      selectedSubcategory,
+      selectedView,
+    ]
+  );
+
+  // Category counts for sidebar (Google Fonts style), based on current view
+  const fontsInView =
+    selectedView === "favorites"
+      ? fonts.filter((f) => f.is_favorite === 1)
+      : fonts;
+  const categoryCounts = fontsInView.reduce<Record<string, number>>(
+    (acc, font) => {
+      const c = (font.category ?? "").trim() || "Sans Serif";
+      acc[c] = (acc[c] ?? 0) + 1;
+      return acc;
+    },
+    {}
+  );
+
+  const subcategoryCounts = fontsInView.reduce<
+    Record<string, Record<string, number>>
+  >((acc, font) => {
+    const c = (font.category ?? "").trim() || "Sans Serif";
+    const s = (font.subcategory ?? "").trim();
+    if (!acc[c]) acc[c] = {};
+    acc[c][s] = (acc[c][s] ?? 0) + 1;
+    return acc;
+  }, {});
+
+  const handleFilterSelect = useCallback(
+    (category: string | null, subcategory: string | null) => {
+      setCategoryFilter({ category, subcategory });
+    },
+    []
+  );
 
   // Find selected font data
   const selectedFontData =
     selectedFont !== null ? fonts.find((f) => f.id === selectedFont) : null;
 
-  // Show detail view if font is selected
-  if (selectedFontData) {
-    return (
-      <FontDetailView
-        font={selectedFontData}
-        onBack={() => setSelectedFont(null)}
-      />
-    );
-  }
+  const handleSelectFont = useCallback((id: number) => {
+    setSelectedFont(id);
+  }, []);
 
   return (
     <div className="bg-background text-foreground flex h-screen w-full overflow-hidden font-sans">
       <Sidebar
         selectedCategory={selectedCategory}
-        onCategorySelect={setSelectedCategory}
+        selectedSubcategory={selectedSubcategory}
+        onFilterSelect={handleFilterSelect}
         selectedView={selectedView}
         onViewSelect={setSelectedView}
+        categoryCounts={categoryCounts}
+        subcategoryCounts={subcategoryCounts}
       />
 
-      <div className="bg-secondary/30 dark:bg-background flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="bg-secondary/30 dark:bg-background relative flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden">
         <Header
           onScan={handleScan}
+          isScanning={loading}
+          rebuildDoneAt={rebuildDoneAt}
           fontSize={fontSize}
           setFontSize={setFontSize}
           previewText={previewText}
@@ -146,9 +205,10 @@ function App() {
 
         <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden min-h-0">
           <FontGrid
+            key={`cat-${selectedCategory ?? "all"}-sub-${selectedSubcategory ?? "all"}`}
             fonts={filteredFonts}
             selectedId={selectedFont}
-            onSelect={setSelectedFont}
+            onSelect={handleSelectFont}
             fontSize={fontSize}
             previewText={previewText}
             onFontsChange={loadFonts}
@@ -164,6 +224,15 @@ function App() {
             </div>
           )}
         </main>
+
+        {selectedFontData && (
+          <div className="bg-background fixed inset-0 z-40 flex flex-col">
+            <FontDetailView
+              font={selectedFontData}
+              onBack={() => setSelectedFont(null)}
+            />
+          </div>
+        )}
 
         <footer className="bg-background text-muted-foreground flex h-10 items-center justify-between border-t px-6 text-[10px] font-medium tracking-widest uppercase">
           <div className="flex gap-6">

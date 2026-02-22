@@ -1,3 +1,4 @@
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Search,
@@ -7,6 +8,8 @@ import {
   Info,
   Database,
   Palette,
+  Loader2,
+  Check,
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -21,6 +24,8 @@ import { Switch } from "@/components/ui/switch";
 
 interface HeaderProps {
   onScan: () => void;
+  isScanning?: boolean;
+  rebuildDoneAt?: number | null;
   fontSize: number;
   setFontSize: (size: number) => void;
   previewText: string;
@@ -31,8 +36,12 @@ interface HeaderProps {
   onToggleTheme: () => void;
 }
 
+const DONE_SHOW_MS = 2500;
+
 export function Header({
   onScan,
+  isScanning = false,
+  rebuildDoneAt = null,
   fontSize,
   setFontSize,
   previewText,
@@ -42,6 +51,18 @@ export function Header({
   theme,
   onToggleTheme,
 }: HeaderProps) {
+  const [showDone, setShowDone] = useState(false);
+
+  useEffect(() => {
+    if (rebuildDoneAt == null) return;
+    setShowDone(true);
+    const t = setTimeout(() => setShowDone(false), DONE_SHOW_MS);
+    return () => clearTimeout(t);
+  }, [rebuildDoneAt]);
+
+  const rebuildState =
+    isScanning ? "scanning" : showDone ? "done" : "idle";
+
   return (
     <header className="bg-background draggable-region flex h-20 shrink-0 items-center justify-between gap-8 border-b pr-36 pl-8">
       {/* Search */}
@@ -147,9 +168,26 @@ export function Header({
                       variant="secondary"
                       size="sm"
                       className="w-full justify-center"
+                      disabled={isScanning}
                     >
-                      <RotateCw className="mr-2 h-3.5 w-3.5" />
-                      Rebuild Font Index
+                      {rebuildState === "scanning" && (
+                        <>
+                          <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+                          Rebuilding…
+                        </>
+                      )}
+                      {rebuildState === "done" && (
+                        <>
+                          <Check className="mr-2 h-3.5 w-3.5 text-emerald-500" />
+                          Done
+                        </>
+                      )}
+                      {rebuildState === "idle" && (
+                        <>
+                          <RotateCw className="mr-2 h-3.5 w-3.5" />
+                          Rebuild Font Index
+                        </>
+                      )}
                     </Button>
                   </div>
                 </div>

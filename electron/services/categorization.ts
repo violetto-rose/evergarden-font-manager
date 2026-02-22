@@ -1,4 +1,11 @@
-// Font categorization logic based on metadata
+// Font categorization: heuristic fallback for all fonts (paid, demo, unknown).
+// Bridge is for reference only; scan always uses this so non–Google Fonts get classified.
+
+function hasAny(str: string, terms: string[]): boolean {
+  const s = str.toLowerCase();
+  return terms.some((t) => s.includes(t.toLowerCase()));
+}
+
 export function categorizeFontFamily(
   familyName: string,
   subfamily: string,
@@ -6,88 +13,171 @@ export function categorizeFontFamily(
 ): { category: string; subcategory: string } {
   const family = familyName.toLowerCase();
   const sub = subfamily.toLowerCase();
+  const combined = `${family} ${sub}`;
 
-  // Monospace check
+  // Monospace
   if (
     monospace === 1 ||
-    family.includes("mono") ||
-    family.includes("code") ||
-    family.includes("console")
+    hasAny(combined, [
+      "mono",
+      "code",
+      "console",
+      "terminal",
+      "programming",
+      "pixel",
+    ])
   ) {
     return { category: "Monospace", subcategory: "Code" };
   }
 
-  // Cursive/Script
-  if (
-    family.includes("script") ||
-    family.includes("cursive") ||
-    family.includes("brush") ||
-    family.includes("handwriting") ||
-    family.includes("calligraph")
-  ) {
-    return { category: "Cursive", subcategory: "Script" };
+  // Cursive / Handwriting (check before Display so "Script" display fonts can still match)
+  const cursiveTerms = [
+    "script",
+    "cursive",
+    "brush",
+    "handwriting",
+    "hand written",
+    "handwritten",
+    "calligraph",
+    "signature",
+    "copperplate",
+    "spencerian",
+    "formal script",
+    "informal script",
+    "script pro",
+    "ink",
+    "pen script",
+    "brush script",
+    "casual",
+    "chalk",
+    "comic",
+    "kaufmann",
+    "palace",
+    "freestyle",
+    "lucida handwriting",
+    "segoe script",
+    "snell roundhand",
+    "viner",
+    "mistral",
+    "bickham",
+    "flourish",
+    "swash",
+  ];
+  if (hasAny(combined, cursiveTerms)) {
+    // Prefer Handwriting subcategory for casual/handwritten terms
+    const handwritingTerms = [
+      "handwriting",
+      "hand written",
+      "handwritten",
+      "brush",
+      "casual",
+      "chalk",
+      "comic",
+      "freestyle",
+    ];
+    const subcategory = hasAny(combined, handwritingTerms)
+      ? "Handwriting"
+      : "Script";
+    return { category: "Cursive", subcategory };
   }
 
-  // Display fonts
-  if (
-    family.includes("display") ||
-    family.includes("decorative") ||
-    family.includes("ornament") ||
-    family.includes("stencil") ||
-    family.includes("blackletter")
-  ) {
+  // Display: Blackletter, Stencil, Decorative (check before generic serif/sans)
+  const blackletterTerms = [
+    "blackletter",
+    "black letter",
+    "fraktur",
+    "textura",
+    "uncial",
+    "old english",
+    "oldenglish",
+    "schwabacher",
+    "rotunda",
+    "lombardic",
+    "gotisch",
+    "gothic type",
+  ];
+  if (hasAny(combined, blackletterTerms)) {
+    return { category: "Display", subcategory: "Blackletter" };
+  }
+
+  const stencilTerms = ["stencil", "stencils", "stencil std"];
+  if (hasAny(combined, stencilTerms)) {
+    return { category: "Display", subcategory: "Stencil" };
+  }
+
+  const displayTerms = [
+    "display",
+    "decorative",
+    "ornament",
+    "poster",
+    "fatface",
+    "inline",
+    "outline",
+    "shadow",
+    "retro",
+    "vintage",
+    "western",
+    "woodblock",
+    "banner",
+    "impact",
+  ];
+  if (hasAny(combined, displayTerms)) {
     return { category: "Display", subcategory: "Decorative" };
   }
 
-  // Serif detection
+  // Serif
   if (family.includes("serif") && !family.includes("sans")) {
-    // Sub-categorize serifs
     if (family.includes("slab")) {
       return { category: "Serif", subcategory: "Slab Serif" };
-    } else if (
-      family.includes("old") ||
-      family.includes("garamond") ||
-      family.includes("caslon")
+    }
+    if (
+      hasAny(combined, ["old", "garamond", "caslon", "baskerville", "jenson"])
     ) {
       return { category: "Serif", subcategory: "Old Style" };
-    } else if (family.includes("didot") || family.includes("bodoni")) {
+    }
+    if (hasAny(combined, ["didot", "bodoni", "modern"])) {
       return { category: "Serif", subcategory: "Didone" };
     }
     return { category: "Serif", subcategory: "Transitional" };
   }
 
-  // Sans Serif (default for most modern fonts)
+  // Sans Serif
   if (
-    family.includes("sans") ||
-    family.includes("gothic") ||
-    family.includes("grotesque") ||
-    family.includes("helvetica") ||
-    family.includes("arial") ||
-    family.includes("futura")
+    hasAny(combined, [
+      "sans",
+      "gothic",
+      "grotesque",
+      "helvetica",
+      "arial",
+      "futura",
+      "univers",
+      "franklin",
+      "gill",
+      "optima",
+      "akzidenz",
+      "din",
+      "meta",
+      "thesis",
+    ])
   ) {
-    // Sub-categorize sans serifs
     if (
-      family.includes("geometric") ||
-      family.includes("futura") ||
-      family.includes("avant")
+      hasAny(combined, ["geometric", "futura", "avant", "eurostile", "century gothic"])
     ) {
       return { category: "Sans Serif", subcategory: "Geometric" };
-    } else if (
-      family.includes("humanist") ||
-      family.includes("gill") ||
-      family.includes("optima")
+    }
+    if (
+      hasAny(combined, ["humanist", "gill", "optima", "frutiger", "verdana", "tahoma"])
     ) {
       return { category: "Sans Serif", subcategory: "Humanist" };
-    } else if (
-      family.includes("grotesque") ||
-      family.includes("akzidenz") ||
-      family.includes("franklin")
+    }
+    if (
+      hasAny(combined, ["grotesque", "akzidenz", "franklin", "trade gothic"])
     ) {
       return { category: "Sans Serif", subcategory: "Grotesque" };
     }
     return { category: "Sans Serif", subcategory: "Neo-Grotesque" };
   }
 
-  // Default: assume sans serif for unclassified modern fonts
+  // Default: Neo-Grotesque for unclassified
   return { category: "Sans Serif", subcategory: "Neo-Grotesque" };
 }

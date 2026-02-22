@@ -10,6 +10,10 @@ import {
 import { scanFonts } from "./services/font-scanner";
 import { startWatcher } from "./services/watcher";
 import { migrateFontsWithCategories } from "./services/migration";
+import {
+  loadBridge,
+  generateBridgeFromDatabase,
+} from "./services/font-metadata-bridge";
 
 // Handle creating/removing shortcuts on Windows when installing/uninstalling.
 import electronSquirrelStartup from "electron-squirrel-startup";
@@ -86,6 +90,9 @@ app.whenReady().then(async () => {
     console.error("Migration error:", e);
   }
 
+  loadBridge();
+  generateBridgeFromDatabase();
+
   createWindow();
 
   // Start watcher
@@ -101,10 +108,11 @@ app.on("window-all-closed", () => {
 });
 
 ipcMain.handle("scan-fonts", async (event) => {
-  return await scanFonts((count) => {
-    // Send progress update to renderer
+  const result = await scanFonts((count) => {
     event.sender.send("scan-progress", count);
   });
+  generateBridgeFromDatabase();
+  return result;
 });
 
 ipcMain.handle("get-fonts", () => {

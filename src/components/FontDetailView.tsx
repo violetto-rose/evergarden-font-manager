@@ -47,6 +47,69 @@ const OPENTYPE_FEATURES = [
   { tag: "titl", label: "Titling", category: "Technical" },
 ];
 
+/** Weight class to human-readable name (OpenType usWeightClass). */
+const WEIGHT_NAMES: Record<number, string> = {
+  1: "Thin",
+  100: "Thin",
+  200: "Extra Light",
+  300: "Light",
+  400: "Regular",
+  500: "Medium",
+  600: "Semi Bold",
+  700: "Bold",
+  800: "Extra Bold",
+  900: "Black",
+};
+
+/** Unambiguous label for a variant in the specimen viewer (avoids multiple "Regular"/"Italic"). */
+function getVariantDisplayLabel(
+  v: { full_name?: string; family?: string; subfamily?: string; weight?: number },
+  family: string
+): string {
+  const full = (v.full_name ?? "").trim();
+  const sub = (v.subfamily ?? "").trim();
+  const fam = (family ?? "").trim();
+  const weight = v.weight != null ? Number(v.weight) : NaN;
+
+  if (full && fam && full !== sub) {
+    const afterFamily = full.startsWith(fam)
+      ? full.slice(fam.length).replace(/^[\s\-–—]+/, "").trim()
+      : "";
+    if (afterFamily && afterFamily.toLowerCase() !== sub.toLowerCase()) {
+      return afterFamily;
+    }
+  }
+
+  const weightName =
+    !Number.isNaN(weight) && weight >= 1 && weight <= 900
+      ? WEIGHT_NAMES[weight] ??
+        (weight <= 150
+          ? "Thin"
+          : weight <= 250
+            ? "Extra Light"
+            : weight <= 350
+              ? "Light"
+              : weight <= 450
+                ? "Regular"
+                : weight <= 550
+                  ? "Medium"
+                  : weight <= 650
+                    ? "Semi Bold"
+                    : weight <= 750
+                      ? "Bold"
+                      : weight <= 850
+                        ? "Extra Bold"
+                        : "Black")
+      : null;
+  const isGeneric =
+    /^(Regular|Normal|Italic|Oblique|Bold|Bold Italic)$/i.test(sub);
+
+  if (isGeneric && weightName && weightName !== sub) {
+    return `${sub} (${weightName})`;
+  }
+  return sub || "Style";
+}
+
 const FEATURE_SAMPLES: Record<string, string> = {
   liga: "fi fl ffi ffl fb ffb fj ffj",
   dlig: "st ct Th",
@@ -65,6 +128,15 @@ const FEATURE_SAMPLES: Record<string, string> = {
   case: "(( )) [[ ]] {{ }} - - -- -- @ @",
   calt: "-> <- - > =>",
 };
+
+const DETAIL_TABS = [
+  { id: "specimen" as const, label: "Specimen" },
+  { id: "glyphs" as const, label: "Glyphs" },
+  { id: "ligatures" as const, label: "Ligatures" },
+  { id: "ot" as const, label: "OT" },
+  { id: "waterfall" as const, label: "Waterfall" },
+  { id: "info" as const, label: "Info" },
+];
 
 export function FontDetailView({ font, onBack }: FontDetailViewProps) {
   const [specimenText, setSpecimenText] = useState("Refinement");
@@ -219,22 +291,21 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
           </div>
 
           <nav className="flex items-center gap-1">
-            {["Specimen", "Glyphs", "Ligatures", "OT", "Waterfall", "Info"].map(
-              (tab) => (
-                <button
-                  key={tab}
-                  className={cn(
-                    "mt-4 px-3 pb-4 text-sm font-medium",
-                    activeTab === tab.toLowerCase()
-                      ? "border-foreground text-foreground border-b-2"
-                      : "text-muted-foreground"
-                  )}
-                  onClick={() => setActiveTab(tab.toLowerCase() as any)}
-                >
-                  {tab}
-                </button>
-              )
-            )}
+            {DETAIL_TABS.map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                className={cn(
+                  "mt-4 px-3 pb-4 text-sm font-medium",
+                  activeTab === tab.id
+                    ? "border-foreground text-foreground border-b-2"
+                    : "text-muted-foreground hover:text-foreground/80"
+                )}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                {tab.label}
+              </button>
+            ))}
           </nav>
         </div>
       </header>
@@ -285,8 +356,13 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
             </div>
           </section>
 
-          {activeTab === "specimen" && (
-            <section className="mx-auto max-w-5xl space-y-20 p-12">
+          <section
+            className={cn(
+              "mx-auto max-w-5xl space-y-20 p-12",
+              activeTab !== "specimen" && "hidden"
+            )}
+            aria-hidden={activeTab !== "specimen"}
+          >
               {/* Headlines */}
               <div>
                 <h3 className="text-muted-foreground mb-6 font-mono text-xs tracking-widest uppercase">
@@ -358,11 +434,15 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                   ))}
                 </div>
               </div>
-            </section>
-          )}
+          </section>
 
-          {activeTab === "glyphs" && (
-            <section className="mx-auto max-w-5xl p-12">
+          <section
+            className={cn(
+              "mx-auto max-w-5xl p-12",
+              activeTab !== "glyphs" && "hidden"
+            )}
+            aria-hidden={activeTab !== "glyphs"}
+          >
               <div className="text-muted-foreground mb-4 flex items-center justify-between text-sm">
                 <span>
                   Showing {glyphsToRender.length} of{" "}
@@ -399,12 +479,16 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                   </Button>
                 </div>
               )}
-            </section>
-          )}
+          </section>
 
-          {activeTab === "ligatures" && (
-            <section className="mx-auto max-w-5xl space-y-12 p-12">
-              <div className="prose dark:prose-invert">
+          <section
+            className={cn(
+              "mx-auto max-w-5xl space-y-12 p-12",
+              activeTab !== "ligatures" && "hidden"
+            )}
+            aria-hidden={activeTab !== "ligatures"}
+          >
+              <div className="prose dark:prose-invert max-w-none">
                 <h2 className="mb-4 text-2xl font-semibold">Ligatures</h2>
                 <p className="text-muted-foreground">
                   Common ligatures comparisons. The second line enables the{" "}
@@ -447,11 +531,15 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                   </div>
                 </div>
               </div>
-            </section>
-          )}
+          </section>
 
-          {activeTab === "ot" && (
-            <section className="mx-auto max-w-5xl space-y-10 p-12">
+          <section
+            className={cn(
+              "mx-auto max-w-5xl space-y-10 p-12",
+              activeTab !== "ot" && "hidden"
+            )}
+            aria-hidden={activeTab !== "ot"}
+          >
               <div className="border-b pb-8">
                 <h2 className="mb-2 text-2xl font-semibold">
                   OpenType Features
@@ -519,11 +607,15 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                   No OpenType features detected.
                 </div>
               )}
-            </section>
-          )}
+          </section>
 
-          {activeTab === "waterfall" && (
-            <section className="mx-auto max-w-5xl p-8">
+          <section
+            className={cn(
+              "mx-auto max-w-5xl p-8",
+              activeTab !== "waterfall" && "hidden"
+            )}
+            aria-hidden={activeTab !== "waterfall"}
+          >
               <div className="space-y-8 overflow-hidden">
                 {[96, 72, 60, 48, 36, 24, 18, 14, 12].map((size) => (
                   <div key={size} className="group flex items-baseline gap-4">
@@ -540,11 +632,15 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                   </div>
                 ))}
               </div>
-            </section>
-          )}
+          </section>
 
-          {activeTab === "info" && (
-            <section className="mx-auto max-w-5xl p-12">
+          <section
+            className={cn(
+              "mx-auto max-w-5xl p-12",
+              activeTab !== "info" && "hidden"
+            )}
+            aria-hidden={activeTab !== "info"}
+          >
               <div className="space-y-8">
                 <div>
                   <h3 className="text-muted-foreground mb-4 font-mono text-xs tracking-widest uppercase">
@@ -604,7 +700,7 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                         <dt className="text-muted-foreground font-mono text-xs">
                           File Path
                         </dt>
-                        <dd className="mt-1 break-all">
+                        <dd className="mt-1 text-sm break-all">
                           {currentFont.file_path}
                         </dd>
                       </div>
@@ -652,8 +748,7 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                   </div>
                 </div>
               </div>
-            </section>
-          )}
+          </section>
         </main>
 
         {/* Sidebar */}
@@ -679,8 +774,8 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                       onClick={() => setSelectedVariant(v)}
                     >
                       <div className="flex w-full flex-col items-start gap-1 overflow-hidden">
-                        <span className="w-full truncate font-medium">
-                          {v.subfamily}
+                        <span className="w-full truncate font-medium" title={v.full_name || v.subfamily}>
+                          {getVariantDisplayLabel(v, font.family)}
                         </span>
                         {/* Preview of the style */}
                         <span

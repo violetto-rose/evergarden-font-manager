@@ -102,7 +102,7 @@ export function saveFont(fontData: FontData) {
 }
 
 export function getAllFonts() {
-  // Group fonts by family and aggregate variants
+  // Group fonts by family; prefer Regular/Normal for card preview (preview_file_path)
   return db
     .prepare(
       `
@@ -110,6 +110,16 @@ export function getAllFonts() {
       MIN(id) as id,
       family,
       GROUP_CONCAT(subfamily, ', ') as subfamily,
+      (
+        SELECT file_path FROM fonts f2
+        WHERE f2.family = fonts.family
+        ORDER BY
+          CASE WHEN f2.subfamily LIKE '%Italic%' THEN 1 ELSE 0 END,
+          CASE WHEN f2.subfamily LIKE '%Regular%' THEN 1 WHEN f2.subfamily LIKE '%Normal%' THEN 2 WHEN f2.subfamily LIKE '%Roman%' THEN 3 WHEN f2.subfamily LIKE '%Book%' THEN 4 ELSE 5 END,
+          f2.weight ASC,
+          f2.id
+        LIMIT 1
+      ) as preview_file_path,
       MIN(file_path) as file_path,
       GROUP_CONCAT(DISTINCT file_path) as all_file_paths,
       MIN(metadata_json) as metadata_json,
@@ -147,6 +157,16 @@ export function getFavorites() {
       MIN(id) as id,
       family,
       GROUP_CONCAT(subfamily, ', ') as subfamily,
+      (
+        SELECT file_path FROM fonts f2
+        WHERE f2.family = fonts.family
+        ORDER BY
+          CASE WHEN f2.subfamily LIKE '%Italic%' THEN 1 ELSE 0 END,
+          CASE WHEN f2.subfamily LIKE '%Regular%' THEN 1 WHEN f2.subfamily LIKE '%Normal%' THEN 2 WHEN f2.subfamily LIKE '%Roman%' THEN 3 WHEN f2.subfamily LIKE '%Book%' THEN 4 ELSE 5 END,
+          f2.weight ASC,
+          f2.id
+        LIMIT 1
+      ) as preview_file_path,
       MIN(file_path) as file_path,
       MIN(metadata_json) as metadata_json,
       MIN(category) as category,
@@ -161,6 +181,24 @@ export function getFavorites() {
     .all();
 }
 
+/** One row per family with current category/subcategory for bridge generation. */
+export function getUniqueFamiliesWithCategory(): {
+  family: string;
+  category: string;
+  subcategory: string;
+}[] {
+  return db
+    .prepare(
+      `
+    SELECT family, MIN(category) as category, MIN(subcategory) as subcategory
+    FROM fonts
+    GROUP BY family
+    ORDER BY family ASC
+  `
+    )
+    .all() as { family: string; category: string; subcategory: string }[];
+}
+
 export function getFontVariants(family: string) {
   return db
     .prepare(
@@ -169,15 +207,22 @@ export function getFontVariants(family: string) {
     FROM fonts
     WHERE family = ?
     ORDER BY
-      CASE
-        WHEN subfamily LIKE '%Regular%' THEN 1
-        WHEN subfamily LIKE '%Normal%' THEN 2
-        WHEN subfamily LIKE '%Medium%' THEN 3
-        WHEN subfamily LIKE '%Bold%' THEN 4
-        WHEN subfamily LIKE '%Italic%' THEN 5
-        ELSE 6
-      END,
-      subfamily ASC
+      COALESCE(NULLIF(weight, 0),
+        CASE
+          WHEN subfamily LIKE '%Thin%' AND subfamily NOT LIKE '%Bold%' THEN 100
+          WHEN subfamily LIKE '%Extra Light%' OR subfamily LIKE '%ExtraLight%' THEN 200
+          WHEN subfamily LIKE '%Light%' AND subfamily NOT LIKE '%Bold%' THEN 300
+          WHEN subfamily LIKE '%Regular%' OR subfamily LIKE '%Normal%' OR subfamily LIKE '%Roman%' OR subfamily LIKE '%Book%' THEN 400
+          WHEN subfamily LIKE '%Medium%' THEN 500
+          WHEN subfamily LIKE '%Semi%Bold%' OR subfamily LIKE '%Demi%Bold%' OR subfamily LIKE '%Semibold%' THEN 600
+          WHEN subfamily LIKE '%Bold%' THEN 700
+          WHEN subfamily LIKE '%Extra Bold%' OR subfamily LIKE '%ExtraBold%' THEN 800
+          WHEN subfamily LIKE '%Black%' OR subfamily LIKE '%Heavy%' THEN 900
+          ELSE 400
+        END
+      ) ASC,
+      italic ASC,
+      id ASC
   `
     )
     .all(family);
