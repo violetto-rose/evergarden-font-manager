@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import logo from "../../assets/logo.svg";
+import logoDark from "../../assets/logo-dark.svg";
 import {
   Grid,
   Clock,
@@ -21,42 +22,42 @@ const CATEGORIES: {
   icon: typeof Type;
   subcategories: string[];
 }[] = [
-  {
-    value: "Serif",
-    label: "Serif",
-    icon: Type,
-    subcategories: ["Slab Serif", "Old Style", "Transitional", "Didone"],
-  },
-  {
-    value: "Sans Serif",
-    label: "Sans Serif",
-    icon: Monitor,
-    subcategories: [
-      "Geometric",
-      "Humanist",
-      "Grotesque",
-      "Neo-Grotesque",
-    ],
-  },
-  {
-    value: "Display",
-    label: "Display",
-    icon: List,
-    subcategories: ["Decorative", "Blackletter", "Stencil"],
-  },
-  {
-    value: "Cursive",
-    label: "Handwriting",
-    icon: PenTool,
-    subcategories: ["Script", "Handwriting"],
-  },
-  {
-    value: "Monospace",
-    label: "Monospace",
-    icon: Code,
-    subcategories: [], // all are code; no subcategory filter
-  },
-];
+    {
+      value: "Serif",
+      label: "Serif",
+      icon: Type,
+      subcategories: ["Slab Serif", "Old Style", "Transitional", "Didone"],
+    },
+    {
+      value: "Sans Serif",
+      label: "Sans Serif",
+      icon: Monitor,
+      subcategories: [
+        "Geometric",
+        "Humanist",
+        "Grotesque",
+        "Neo-Grotesque",
+      ],
+    },
+    {
+      value: "Display",
+      label: "Display",
+      icon: List,
+      subcategories: ["Decorative", "Blackletter", "Stencil"],
+    },
+    {
+      value: "Cursive",
+      label: "Handwriting",
+      icon: PenTool,
+      subcategories: ["Script", "Handwriting"],
+    },
+    {
+      value: "Monospace",
+      label: "Monospace",
+      icon: Code,
+      subcategories: [], // all are code; no subcategory filter
+    },
+  ];
 
 interface SidebarProps {
   selectedCategory: string | null;
@@ -77,24 +78,19 @@ export function Sidebar({
   categoryCounts = {},
   subcategoryCounts = {},
 }: SidebarProps) {
-  const [expandedCategories, setExpandedCategories] = useState<Set<string>>(
-    () => new Set() // collapsed by default
-  );
+  // Accordion: only one category open at a time
+  const [expandedCategory, setExpandedCategory] = useState<string | null>(null);
 
   const toggleExpanded = (value: string) => {
-    setExpandedCategories((prev) => {
-      const next = new Set(prev);
-      if (next.has(value)) next.delete(value);
-      else next.add(value);
-      return next;
-    });
+    setExpandedCategory((prev) => (prev === value ? null : value));
   };
 
   return (
     <aside className="bg-background hidden h-full w-64 flex-col border-r md:flex">
       <div className="flex min-h-0 flex-1 flex-col p-6">
         <div className="mb-6 flex shrink-0 items-center">
-          <img src={logo} alt="Evergarden" className="h-12 w-auto" />
+          <img src={logo} alt="Evergarden" className="h-12 w-auto dark:hidden" />
+          <img src={logoDark} alt="Evergarden" className="h-12 w-auto hidden dark:block" />
         </div>
 
         <nav className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden">
@@ -112,6 +108,7 @@ export function Sidebar({
                   }
                   className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-9 w-full justify-start gap-3 px-3 font-medium"
                   onClick={() => {
+                    setExpandedCategory(null);
                     onViewSelect("all");
                     onFilterSelect(null, null);
                   }}
@@ -122,9 +119,13 @@ export function Sidebar({
               </li>
               <li>
                 <Button
-                  variant="ghost"
+                  variant={selectedView === "recently-added" ? "secondary" : "ghost"}
                   className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-9 w-full justify-start gap-3 px-3 font-medium"
-                  disabled
+                  onClick={() => {
+                    setExpandedCategory(null);
+                    onViewSelect("recently-added");
+                    onFilterSelect(null, null);
+                  }}
                 >
                   <Clock className="h-4 w-4" />
                   Recently Added
@@ -135,6 +136,7 @@ export function Sidebar({
                   variant={selectedView === "favorites" ? "secondary" : "ghost"}
                   className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-9 w-full justify-start gap-3 px-3 font-medium"
                   onClick={() => {
+                    setExpandedCategory(null);
                     onViewSelect("favorites");
                     onFilterSelect(null, null);
                   }}
@@ -152,7 +154,7 @@ export function Sidebar({
             </p>
             <ul className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
               {CATEGORIES.map(({ value, label, icon: Icon, subcategories }) => {
-                const isExpanded = expandedCategories.has(value);
+                const isExpanded = expandedCategory === value;
                 const isCategorySelected = selectedCategory === value;
                 const catCount = categoryCounts[value] ?? 0;
                 const subCounts = subcategoryCounts[value] ?? {};
@@ -162,7 +164,13 @@ export function Sidebar({
                     <button
                       type="button"
                       className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm font-medium transition-colors"
-                      onClick={() => toggleExpanded(value)}
+                      onClick={() => {
+                        toggleExpanded(value);
+                        if (selectedCategory !== value) {
+                          onViewSelect("all");
+                          onFilterSelect(value, null);
+                        }
+                      }}
                     >
                       {isExpanded ? (
                         <ChevronDown className="h-4 w-4 shrink-0" />

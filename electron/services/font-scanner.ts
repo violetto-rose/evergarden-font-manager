@@ -117,7 +117,9 @@ export async function processFontFile(
       fontObj.preferredSubfamily || fontObj.subfamilyName
     );
 
-    // Heuristic 1: If family name ends with subfamily name (e.g. "Arial Bold" and "Bold"), strip it
+    // Heuristic 1: If familyName ends with the subfamilyName, strip it.
+    // Handles fonts that don't use Name ID 16 and embed weight into Name ID 1.
+    // e.g. family="Arial Bold" + subfamily="Bold" → family="Arial"
     if (
       subfamilyName &&
       familyName.toLowerCase().endsWith(" " + subfamilyName.toLowerCase())
@@ -125,85 +127,30 @@ export async function processFontFile(
       familyName = familyName.slice(0, -subfamilyName.length - 1).trim();
     }
 
-    // Heuristic 2: Strip style/weight/width/legal suffixes so "ABC Ginto Nord Condensed Unlicensed Trial" -> "ABC Ginto Nord"
-    const styleSuffixes = [
+    // Heuristic 2: Strip ONLY license/commercial qualifiers — NOT design descriptors.
+    // 'Condensed', 'Nord', 'Extended' etc. ARE meaningful family identifiers and
+    // must NOT be stripped (they're different typefaces, not just styles).
+    const LICENSE_SUFFIXES = [
       "Unlicensed Trial",
+      "Personal Use Only",
+      "Personal Use",
       "Unlicensed",
       "Trial",
-      "Personal Use",
       "Demo",
       "Free",
-      "ExtraLight",
-      "Extra Light",
-      "Thin",
-      "Light",
-      "Medium",
-      "SemiBold",
-      "Semi Bold",
-      "Semibold",
-      "DemiBold",
-      "Demi Bold",
-      "Bold",
-      "ExtraBold",
-      "Extra Bold",
-      "UltraBold",
-      "Ultra Bold",
-      "Black",
-      "Heavy",
-      "Italic",
-      "Oblique",
-      "Regular",
-      "Normal",
-      "Condensed",
-      "Compressed",
-      "Expanded",
-      "Extended",
-      "Narrow",
-      "Wide",
-      "Nord",  // e.g. "ABC Ginto Nord" -> "ABC Ginto"
     ];
-
-    // Sort by length to match longest suffixes first
-    styleSuffixes.sort((a, b) => b.length - a.length);
+    // Sort longest-first so we match the most specific form first
+    LICENSE_SUFFIXES.sort((a, b) => b.length - a.length);
 
     let stripped = true;
     while (stripped) {
       stripped = false;
-      for (const suffix of styleSuffixes) {
-        const regex = new RegExp(`\\s+${suffix}$`, "i");
+      for (const suffix of LICENSE_SUFFIXES) {
+        // Match suffix optionally preceded by a dash/hyphen separator
+        const regex = new RegExp(`[\\s\\-–—]*${suffix}\\s*$`, "i");
         if (regex.test(familyName)) {
           familyName = familyName.replace(regex, "").trim();
           stripped = true;
-          break;
-        }
-      }
-    }
-
-    // Also strip width/legal/design suffixes without leading space (e.g. "AdriannaExtended", "GintoNordUnlicensedTrial")
-    const noSpaceSuffixes = [
-      "UnlicensedTrial",
-      "Unlicensed",
-      "Trial",
-      "Extended",
-      "Condensed",
-      "Compressed",
-      "Expanded",
-      "Narrow",
-      "Wide",
-    ];
-    let noSpaceStripped = true;
-    while (noSpaceStripped) {
-      noSpaceStripped = false;
-      for (const suffix of noSpaceSuffixes) {
-        const suf = suffix.toLowerCase();
-        const fam = familyName.toLowerCase();
-        if (
-          familyName.length > suffix.length &&
-          fam.endsWith(suf) &&
-          /[a-z]/.test(familyName[familyName.length - suffix.length - 1])
-        ) {
-          familyName = familyName.slice(0, -suffix.length).trim();
-          noSpaceStripped = true;
           break;
         }
       }
@@ -241,7 +188,8 @@ export async function processFontFile(
         features: extractOpenTypeFeatures(fontObj),
         characterSet: fontObj.characterSet,
       }),
-      last_seen: Date.now(),
+      // Store as Unix seconds (consistent with getRecentFonts cutoff)
+      last_seen: Math.floor(Date.now() / 1000),
     };
 
     saveFont(metadata);

@@ -1,10 +1,11 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef, useCallback, useDeferredValue, useTransition, type ReactNode } from "react";
 import { ArrowLeft, FolderOpen, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
 import { cn } from "@/lib/utils";
 import logo from "../../assets/logo.svg";
+import logoDark from "../../assets/logo-dark.svg";
 
 interface FontDetailViewProps {
   font: any;
@@ -83,23 +84,23 @@ function getVariantDisplayLabel(
   const weightName =
     !Number.isNaN(weight) && weight >= 1 && weight <= 900
       ? WEIGHT_NAMES[weight] ??
-        (weight <= 150
-          ? "Thin"
-          : weight <= 250
-            ? "Extra Light"
-            : weight <= 350
-              ? "Light"
-              : weight <= 450
-                ? "Regular"
-                : weight <= 550
-                  ? "Medium"
-                  : weight <= 650
-                    ? "Semi Bold"
-                    : weight <= 750
-                      ? "Bold"
-                      : weight <= 850
-                        ? "Extra Bold"
-                        : "Black")
+      (weight <= 150
+        ? "Thin"
+        : weight <= 250
+          ? "Extra Light"
+          : weight <= 350
+            ? "Light"
+            : weight <= 450
+              ? "Regular"
+              : weight <= 550
+                ? "Medium"
+                : weight <= 650
+                  ? "Semi Bold"
+                  : weight <= 750
+                    ? "Bold"
+                    : weight <= 850
+                      ? "Extra Bold"
+                      : "Black")
       : null;
   const isGeneric =
     /^(Regular|Normal|Italic|Oblique|Bold|Bold Italic)$/i.test(sub);
@@ -129,6 +130,112 @@ const FEATURE_SAMPLES: Record<string, string> = {
   calt: "-> <- - > =>",
 };
 
+const MARQUEE_SPEED = 1.1; // px per frame at 60fps
+const MARQUEE_PAUSE = 55;  // frames to hold at each end (~0.9s)
+
+/**
+ * MarqueeOnHover – scrolls overflowing text on hover (like a music-player song title).
+ * - Idle  : completely static, zero CPU
+ * - Hover : smoothly scrolls to reveal full text, then ping-pongs back
+ * - Leave : snaps back to start at 2× speed
+ * Powered by rAF; no CSS keyframes, works for any label length.
+ */
+function MarqueeOnHover({
+  children,
+  className,
+  title,
+}: {
+  children: ReactNode;
+  className?: string;
+  title?: string;
+}) {
+  const outerRef = useRef<HTMLSpanElement>(null);
+  const innerRef = useRef<HTMLSpanElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const posRef = useRef(0);           // current translateX in px (≤ 0)
+  const dirRef = useRef<"fwd" | "back">("fwd");
+  const pauseRef = useRef(0);           // remaining pause frames
+
+  /* ── stable helpers (only use refs, never stale) ─────────────────── */
+  const cancel = useCallback(() => {
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+  }, []);
+
+  const setPos = useCallback((px: number) => {
+    posRef.current = px;
+    if (innerRef.current) innerRef.current.style.transform = `translateX(${px}px)`;
+  }, []);
+
+  /* ── forward tick ─────────────────────────────────────────────────── */
+  const tick = useCallback(() => {
+    const outer = outerRef.current;
+    const inner = innerRef.current;
+    if (!outer || !inner) return;
+
+    const overflow = inner.scrollWidth - outer.clientWidth;
+    if (overflow <= 0) { rafRef.current = null; return; }
+
+    const maxScroll = -overflow;
+
+    if (pauseRef.current > 0) {
+      pauseRef.current -= 1;
+      rafRef.current = requestAnimationFrame(tick);
+      return;
+    }
+
+    if (dirRef.current === "fwd") {
+      const next = Math.max(posRef.current - MARQUEE_SPEED, maxScroll);
+      setPos(next);
+      if (next <= maxScroll) { dirRef.current = "back"; pauseRef.current = MARQUEE_PAUSE; }
+    } else {
+      const next = Math.min(posRef.current + MARQUEE_SPEED, 0);
+      setPos(next);
+      if (next >= 0) { dirRef.current = "fwd"; pauseRef.current = MARQUEE_PAUSE; }
+    }
+
+    rafRef.current = requestAnimationFrame(tick);
+  }, [setPos]);
+
+  /* ── snap-back on leave ───────────────────────────────────────────── */
+  const snapBack = useCallback(() => {
+    if (!innerRef.current) return;
+    if (posRef.current >= 0) { setPos(0); rafRef.current = null; return; }
+    setPos(Math.min(posRef.current + MARQUEE_SPEED * 2.5, 0));
+    rafRef.current = requestAnimationFrame(snapBack);
+  }, [setPos]);
+
+  const handleMouseEnter = useCallback(() => {
+    cancel();
+    dirRef.current = "fwd";
+    pauseRef.current = 0;
+    rafRef.current = requestAnimationFrame(tick);
+  }, [cancel, tick]);
+
+  const handleMouseLeave = useCallback(() => {
+    cancel();
+    rafRef.current = requestAnimationFrame(snapBack);
+  }, [cancel, snapBack]);
+
+  useEffect(() => () => cancel(), [cancel]);
+
+  return (
+    <span
+      ref={outerRef}
+      className={`marquee-outer${className ? ` ${className}` : ""}`}
+      title={title}
+      onMouseEnter={handleMouseEnter}
+      onMouseLeave={handleMouseLeave}
+    >
+      <span ref={innerRef} className="marquee-inner">
+        {children}
+      </span>
+    </span>
+  );
+}
+
 const DETAIL_TABS = [
   { id: "specimen" as const, label: "Specimen" },
   { id: "glyphs" as const, label: "Glyphs" },
@@ -143,54 +250,90 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
   const [activeTab, setActiveTab] = useState<
     "specimen" | "glyphs" | "ligatures" | "ot" | "waterfall" | "info"
   >("specimen");
+  // Track which tabs have ever been visited – content is lazy-mounted on first
+  // visit then kept alive (hidden) so switching back is instant.
+  const [mountedTabs, setMountedTabs] = useState<Set<string>>(
+    () => new Set(["specimen"])
+  );
+  // useTransition marks tab/variant switches as non-urgent → click feels
+  // instant; React can interrupt the heavy mount if needed.
+  const [tabPending, startTabTransition] = useTransition();
   const [variants, setVariants] = useState<any[]>([]);
   const [selectedVariant, setSelectedVariant] = useState<any>(null);
 
   // Load all variants for this font family
   useEffect(() => {
+    let cancelled = false;
     const loadVariants = async () => {
       if (window.api && window.api.getFontVariants) {
         const allVariants = await window.api.getFontVariants(font.family);
-        setVariants(allVariants);
+        if (cancelled) return;
 
         if (allVariants.length > 0) {
-          // Priority: named "Regular"/"Normal"/"Book"/"Roman", then any non-Italic, then first one
-          const priorityTerms = ["Regular", "Normal", "Book", "Roman"];
-          const bestVariant = allVariants.find((v: any) =>
-            priorityTerms.some((term) => v.subfamily.includes(term))
-          );
-          const nonItalic = allVariants.find(
-            (v: any) => !v.subfamily.includes("Italic")
+          const sub = (v: any) => (v.subfamily ?? "").trim().toLowerCase();
+          const isItalic = (v: any) =>
+            v.italic === 1 || sub(v).includes("italic") || sub(v).includes("oblique");
+
+          // 1. Exact "Regular" subfamily
+          const exactRegular = allVariants.find((v: any) => sub(v) === "regular");
+
+          // 2. Exact match for other neutral names
+          const neutralNames = ["normal", "book", "roman"];
+          const exactNeutral = allVariants.find((v: any) =>
+            neutralNames.includes(sub(v))
           );
 
-          setSelectedVariant(bestVariant || nonItalic || allVariants[0]);
+          // 3. Non-italic variant whose weight is numerically closest to 400
+          //    (catches "Nord Regular", "Condensed Regular", compound subfamily names)
+          const nonItalics = allVariants.filter((v: any) => !isItalic(v));
+          const byProximity = [...nonItalics].sort((a: any, b: any) =>
+            Math.abs((a.weight || 400) - 400) - Math.abs((b.weight || 400) - 400)
+          );
+          const weightNearest = byProximity[0] ?? null;
+
+          // 4. Absolute fallback
+          const best =
+            exactRegular ?? exactNeutral ?? weightNearest ?? allVariants[0];
+
+          // Non-urgent → doesn't compete with paint/initial render
+          startTabTransition(() => {
+            setVariants(allVariants);
+            setSelectedVariant(best);
+          });
         }
       } else {
-        // Fallback if API not available
-        setVariants([font]);
-        setSelectedVariant(font);
+        startTabTransition(() => {
+          setVariants([font]);
+          setSelectedVariant(font);
+        });
       }
     };
     loadVariants();
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [font.family]);
 
   // Use selected variant or fallback to prop font
   const currentFont = selectedVariant || font;
 
-  // Typography state
+  // Typography state – live (controls slider display)
   const [typography, setTypography] = useState({
     fontSize: 72,
     lineHeight: 1.2,
     letterSpacing: 0,
     align: "left" as "left" | "center" | "right",
   });
+  // Deferred – specimen text and heavy font renders use this so sliders stay
+  // at 60fps while font re-layout catches up asynchronously.
+  const deferredTypography = useDeferredValue(typography);
 
-  // Features state
+  // Features state – live (for switch toggles)
   const [features, setFeatures] = useState<Record<string, boolean>>({
     liga: true,
     kern: true,
   });
+  // Deferred – OT feature comparisons re-render only after interaction settles
+  const deferredFeatures = useDeferredValue(features);
 
   // Extract features and chars from metadata
   const { supportedFeatures, supportedChars } = useMemo(() => {
@@ -237,25 +380,26 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
 
   const characters = "ABCDEFGHIJKLabcd0123&$?!".split("");
 
-  // Generate font-feature-settings CSS from features state
+  // Generate font-feature-settings CSS – uses DEFERRED features
   const featureSettings = useMemo(() => {
-    return Object.entries(features)
+    return Object.entries(deferredFeatures)
       .filter(([_, enabled]) => enabled)
-      .map(([key, _]) => `"${key}" 1`)
+      .map(([key]) => `"${key}" 1`)
       .join(", ");
-  }, [features]);
+  }, [deferredFeatures]);
 
-  // Generate style object with typography settings
-  const getTypographyStyle = (
+  // Style builder – uses DEFERRED typography for specimen rendering.
+  // Sidebar slider *labels* still read live `typography` so they feel instant.
+  const getTypographyStyle = useCallback((
     baseFontSize?: number,
     settings?: { featureSettings?: string }
   ) => ({
     fontFamily: `'${fontId}', sans-serif`,
     fontFeatureSettings: settings?.featureSettings ?? featureSettings,
-    fontSize: baseFontSize || typography.fontSize,
-    lineHeight: typography.lineHeight,
-    letterSpacing: `${typography.letterSpacing}px`,
-  });
+    fontSize: baseFontSize || deferredTypography.fontSize,
+    lineHeight: deferredTypography.lineHeight,
+    letterSpacing: `${deferredTypography.letterSpacing}px`,
+  }), [fontId, featureSettings, deferredTypography]);
 
   // Group features by category
   const featuresByCategory = useMemo(() => {
@@ -277,7 +421,8 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
       <header className="bg-background flex h-14 shrink-0 items-center justify-between border-b px-4">
         <div className="flex items-center gap-6">
           <div className="flex items-center gap-2">
-            <img src={logo} alt="Evergarden" className="h-8 w-auto" />
+            <img src={logo} alt="Evergarden" className="h-8 w-auto dark:hidden" />
+            <img src={logoDark} alt="Evergarden" className="h-8 w-auto hidden dark:block" />
             <div className="bg-border mx-2 h-4 w-px"></div>
             <Button
               variant="ghost"
@@ -296,12 +441,25 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                 key={tab.id}
                 type="button"
                 className={cn(
-                  "mt-4 px-3 pb-4 text-sm font-medium",
+                  "mt-4 px-3 pb-4 text-sm font-medium transition-opacity",
                   activeTab === tab.id
                     ? "border-foreground text-foreground border-b-2"
-                    : "text-muted-foreground hover:text-foreground/80"
+                    : "text-muted-foreground hover:text-foreground/80",
+                  tabPending && activeTab !== tab.id && "opacity-50"
                 )}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => {
+                  // setActiveTab is urgent (indicator snaps immediately)
+                  setActiveTab(tab.id);
+                  // mounting new tab content is non-urgent
+                  startTabTransition(() => {
+                    setMountedTabs((prev) => {
+                      if (prev.has(tab.id)) return prev;
+                      const next = new Set(prev);
+                      next.add(tab.id);
+                      return next;
+                    });
+                  });
+                }}
               >
                 {tab.label}
               </button>
@@ -356,6 +514,7 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
             </div>
           </section>
 
+          {/* Specimen tab – always mounted (initial tab) */}
           <section
             className={cn(
               "mx-auto max-w-5xl space-y-20 p-12",
@@ -363,86 +522,88 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
             )}
             aria-hidden={activeTab !== "specimen"}
           >
-              {/* Headlines */}
-              <div>
-                <h3 className="text-muted-foreground mb-6 font-mono text-xs tracking-widest uppercase">
-                  Headlines
-                </h3>
-                <div className="space-y-8">
-                  <p
-                    className="text-6xl leading-tight"
-                    style={getTypographyStyle(60)}
-                  >
-                    The quick brown fox jumps over the lazy dog.
-                  </p>
-                  <p
-                    className="text-5xl leading-tight"
-                    style={getTypographyStyle(48)}
-                  >
-                    Typography is the craft of endowing human language with a
-                    durable visual form.
-                  </p>
-                </div>
+            {/* Headlines */}
+            <div>
+              <h3 className="text-muted-foreground mb-6 font-mono text-xs tracking-widest uppercase">
+                Headlines
+              </h3>
+              <div className="space-y-8">
+                <p
+                  className="text-6xl leading-tight"
+                  style={getTypographyStyle(60)}
+                >
+                  The quick brown fox jumps over the lazy dog.
+                </p>
+                <p
+                  className="text-5xl leading-tight"
+                  style={getTypographyStyle(48)}
+                >
+                  Typography is the craft of endowing human language with a
+                  durable visual form.
+                </p>
               </div>
+            </div>
 
-              {/* Paragraph Body */}
-              <div>
-                <h3 className="text-muted-foreground mb-6 font-mono text-xs tracking-widest uppercase">
-                  Paragraph Body
-                </h3>
-                <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
-                  <div className="space-y-4">
-                    <p
-                      className="text-lg leading-relaxed"
-                      style={getTypographyStyle(18)}
-                    >
-                      In a professional design environment, the choice of
-                      typeface is more than just an aesthetic decision; it's a
-                      functional one. A font must balance readability,
-                      character, and technical performance across various
-                      digital and physical mediums.
-                    </p>
-                  </div>
-                  <div className="space-y-4">
-                    <p
-                      className="text-lg leading-relaxed"
-                      style={getTypographyStyle(18)}
-                    >
-                      The details are not the details. They make the design.
-                      Typography is an art. Good typography is invisible. If
-                      you're noticing it, it's either very good or very bad,
-                      depending on the context of the work.
-                    </p>
-                  </div>
+            {/* Paragraph Body */}
+            <div>
+              <h3 className="text-muted-foreground mb-6 font-mono text-xs tracking-widest uppercase">
+                Paragraph Body
+              </h3>
+              <div className="grid grid-cols-1 gap-12 md:grid-cols-2">
+                <div className="space-y-4">
+                  <p
+                    className="text-lg leading-relaxed"
+                    style={getTypographyStyle(18)}
+                  >
+                    In a professional design environment, the choice of
+                    typeface is more than just an aesthetic decision; it's a
+                    functional one. A font must balance readability,
+                    character, and technical performance across various
+                    digital and physical mediums.
+                  </p>
+                </div>
+                <div className="space-y-4">
+                  <p
+                    className="text-lg leading-relaxed"
+                    style={getTypographyStyle(18)}
+                  >
+                    The details are not the details. They make the design.
+                    Typography is an art. Good typography is invisible. If
+                    you're noticing it, it's either very good or very bad,
+                    depending on the context of the work.
+                  </p>
                 </div>
               </div>
+            </div>
 
-              {/* Character Set */}
-              <div>
-                <h3 className="text-muted-foreground mb-6 font-mono text-xs tracking-widest uppercase">
-                  Character Set
-                </h3>
-                <div className="grid grid-cols-8 gap-2 text-2xl sm:grid-cols-12">
-                  {characters.map((char, idx) => (
-                    <div
-                      key={idx}
-                      className="hover:bg-secondary border-border flex aspect-square cursor-default items-center justify-center rounded border"
-                      style={getTypographyStyle(24)}
-                    >
-                      {char}
-                    </div>
-                  ))}
-                </div>
+            {/* Character Set */}
+            <div>
+              <h3 className="text-muted-foreground mb-6 font-mono text-xs tracking-widest uppercase">
+                Character Set
+              </h3>
+              <div className="grid grid-cols-8 gap-2 text-2xl sm:grid-cols-12">
+                {characters.map((char, idx) => (
+                  <div
+                    key={idx}
+                    className="hover:bg-secondary border-border flex aspect-square cursor-default items-center justify-center rounded border"
+                    style={getTypographyStyle(24)}
+                  >
+                    {char}
+                  </div>
+                ))}
               </div>
+            </div>
           </section>
 
-          <section
-            className={cn(
-              "mx-auto max-w-5xl p-12",
-              activeTab !== "glyphs" && "hidden"
-            )}
-            aria-hidden={activeTab !== "glyphs"}
-          >
+          {/* Glyphs tab – lazy mounted on first visit */}
+          {mountedTabs.has("glyphs") && (
+            <section
+              className={cn(
+                "mx-auto max-w-5xl p-12",
+                activeTab !== "glyphs" && "hidden"
+              )}
+              aria-hidden={activeTab !== "glyphs"}
+            >
               <div className="text-muted-foreground mb-4 flex items-center justify-between text-sm">
                 <span>
                   Showing {glyphsToRender.length} of{" "}
@@ -479,15 +640,18 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                   </Button>
                 </div>
               )}
-          </section>
+            </section>
+          )}
 
-          <section
-            className={cn(
-              "mx-auto max-w-5xl space-y-12 p-12",
-              activeTab !== "ligatures" && "hidden"
-            )}
-            aria-hidden={activeTab !== "ligatures"}
-          >
+          {/* Ligatures tab – lazy mounted on first visit */}
+          {mountedTabs.has("ligatures") && (
+            <section
+              className={cn(
+                "mx-auto max-w-5xl space-y-12 p-12",
+                activeTab !== "ligatures" && "hidden"
+              )}
+              aria-hidden={activeTab !== "ligatures"}
+            >
               <div className="prose dark:prose-invert max-w-none">
                 <h2 className="mb-4 text-2xl font-semibold">Ligatures</h2>
                 <p className="text-muted-foreground">
@@ -531,15 +695,18 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                   </div>
                 </div>
               </div>
-          </section>
+            </section>
+          )}
 
-          <section
-            className={cn(
-              "mx-auto max-w-5xl space-y-10 p-12",
-              activeTab !== "ot" && "hidden"
-            )}
-            aria-hidden={activeTab !== "ot"}
-          >
+          {/* OT tab – lazy mounted on first visit */}
+          {mountedTabs.has("ot") && (
+            <section
+              className={cn(
+                "mx-auto max-w-5xl space-y-10 p-12",
+                activeTab !== "ot" && "hidden"
+              )}
+              aria-hidden={activeTab !== "ot"}
+            >
               <div className="border-b pb-8">
                 <h2 className="mb-2 text-2xl font-semibold">
                   OpenType Features
@@ -607,15 +774,18 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                   No OpenType features detected.
                 </div>
               )}
-          </section>
+            </section>
+          )}
 
-          <section
-            className={cn(
-              "mx-auto max-w-5xl p-8",
-              activeTab !== "waterfall" && "hidden"
-            )}
-            aria-hidden={activeTab !== "waterfall"}
-          >
+          {/* Waterfall tab – lazy mounted on first visit */}
+          {mountedTabs.has("waterfall") && (
+            <section
+              className={cn(
+                "mx-auto max-w-5xl p-8",
+                activeTab !== "waterfall" && "hidden"
+              )}
+              aria-hidden={activeTab !== "waterfall"}
+            >
               <div className="space-y-8 overflow-hidden">
                 {[96, 72, 60, 48, 36, 24, 18, 14, 12].map((size) => (
                   <div key={size} className="group flex items-baseline gap-4">
@@ -632,15 +802,18 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                   </div>
                 ))}
               </div>
-          </section>
+            </section>
+          )}
 
-          <section
-            className={cn(
-              "mx-auto max-w-5xl p-12",
-              activeTab !== "info" && "hidden"
-            )}
-            aria-hidden={activeTab !== "info"}
-          >
+          {/* Info tab – lazy mounted on first visit */}
+          {mountedTabs.has("info") && (
+            <section
+              className={cn(
+                "mx-auto max-w-5xl p-12",
+                activeTab !== "info" && "hidden"
+              )}
+              aria-hidden={activeTab !== "info"}
+            >
               <div className="space-y-8">
                 <div>
                   <h3 className="text-muted-foreground mb-4 font-mono text-xs tracking-widest uppercase">
@@ -748,7 +921,8 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                   </div>
                 </div>
               </div>
-          </section>
+            </section>
+          )}
         </main>
 
         {/* Sidebar */}
@@ -761,34 +935,43 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                   Weight & Style
                 </h3>
                 <div className="grid grid-cols-2 gap-2">
-                  {variants.map((v) => (
-                    <Button
-                      key={v.id}
-                      variant={
-                        selectedVariant?.id === v.id ? "secondary" : "outline"
-                      }
-                      className={cn(
-                        "h-auto justify-start px-3 py-2 text-xs",
-                        selectedVariant?.id === v.id && "border-primary"
-                      )}
-                      onClick={() => setSelectedVariant(v)}
-                    >
-                      <div className="flex w-full flex-col items-start gap-1 overflow-hidden">
-                        <span className="w-full truncate font-medium" title={v.full_name || v.subfamily}>
-                          {getVariantDisplayLabel(v, font.family)}
-                        </span>
-                        {/* Preview of the style */}
-                        <span
-                          className="w-full truncate text-lg opacity-70"
-                          style={{
-                            fontFamily: `'font-detail-${v.id}'`,
-                          }}
-                        >
-                          Aa
-                        </span>
-                      </div>
-                    </Button>
-                  ))}
+                  {variants.map((v) => {
+                    const label = getVariantDisplayLabel(v, font.family);
+                    return (
+                      <Button
+                        key={v.id}
+                        variant={
+                          selectedVariant?.id === v.id ? "secondary" : "outline"
+                        }
+                        className={cn(
+                          "h-auto justify-start px-3 py-2 text-xs",
+                          selectedVariant?.id === v.id && "border-primary"
+                        )}
+                        onClick={() =>
+                          startTabTransition(() => setSelectedVariant(v))
+                        }
+                      >
+                        <div className="flex w-full flex-col items-start gap-1 overflow-hidden">
+                          {/* Marquee-on-hover style name */}
+                          <MarqueeOnHover
+                            className="w-full font-medium"
+                            title={v.full_name || v.subfamily}
+                          >
+                            {label}
+                          </MarqueeOnHover>
+                          {/* Preview of the style */}
+                          <span
+                            className="w-full truncate text-lg opacity-70"
+                            style={{
+                              fontFamily: `'font-detail-${v.id}'`,
+                            }}
+                          >
+                            Aa
+                          </span>
+                        </div>
+                      </Button>
+                    );
+                  })}
                 </div>
                 {/* Hidden font-faces for variants to show preview used above */}
                 {variants.map((v) => (
@@ -943,10 +1126,10 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                   (cat) =>
                     cat.filter((f) => supportedFeatures.has(f.tag)).length === 0
                 ) && (
-                  <div className="text-muted-foreground rounded border border-dashed p-4 py-2 text-center text-xs">
-                    No OpenType features detected for this font.
-                  </div>
-                )}
+                    <div className="text-muted-foreground rounded border border-dashed p-4 py-2 text-center text-xs">
+                      No OpenType features detected for this font.
+                    </div>
+                  )}
               </div>
             </div>
 

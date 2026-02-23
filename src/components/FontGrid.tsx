@@ -1,6 +1,6 @@
-import { useCallback, useMemo, useRef } from "react";
+import { useCallback, useMemo } from "react";
 import { FixedSizeGrid as Grid } from "react-window";
-import { AutoSizer, type AutoSizerChildProps } from "react-virtualized-auto-sizer";
+import { AutoSizer } from "react-virtualized-auto-sizer";
 import { FontCard } from "./FontCard";
 
 interface Font {
@@ -21,45 +21,7 @@ interface FontGridProps {
   onFontsChange?: () => void;
 }
 
-// Stable component reference so AutoSizer never remounts the grid (preserves scroll)
-function makeGridChild(
-  propsRef: React.MutableRefObject<{
-    itemData: ReturnType<typeof makeItemData>;
-    itemKey: (args: { rowIndex: number; columnIndex: number; data: any }) => any;
-    fontsLength: number;
-  }>
-) {
-  return function GridChild({ height, width }: AutoSizerChildProps) {
-    const { itemData, itemKey, fontsLength } = propsRef.current;
-    if (!height || !width) return null;
 
-    const scrollbarWidth = 17;
-    const availableWidth = width - scrollbarWidth;
-    const minColumnWidth = 300;
-    const columnCount = Math.floor(availableWidth / minColumnWidth) || 1;
-    const columnWidth = Math.floor(availableWidth / columnCount);
-    const rowCount = Math.ceil(fontsLength / columnCount);
-    const rowHeight = 320;
-    const gridData = { ...itemData, columnCount };
-
-    return (
-      <Grid
-        columnCount={columnCount}
-        columnWidth={columnWidth}
-        rowCount={rowCount}
-        rowHeight={rowHeight}
-        height={height}
-        width={width}
-        itemData={gridData}
-        itemKey={itemKey}
-        overscanRowCount={2}
-        overscanColumnCount={1}
-      >
-        {Cell}
-      </Grid>
-    );
-  };
-}
 
 function makeItemData(
   fonts: Font[],
@@ -129,14 +91,6 @@ export function FontGrid({
     []
   );
 
-  const propsRef = useRef({ itemData, itemKey, fontsLength: fonts.length });
-  propsRef.current = { itemData, itemKey, fontsLength: fonts.length };
-
-  const GridChild = useMemo(
-    () => makeGridChild(propsRef),
-    [] // stable: same component type every time so AutoSizer never remounts
-  );
-
   if (fonts.length === 0) {
     return (
       <div className="text-muted-foreground flex h-full items-center justify-center">
@@ -149,10 +103,37 @@ export function FontGrid({
   }
 
   return (
-    <div className="flex-1 min-h-0 min-w-0">
+    <div className="flex-1 min-h-0 min-w-0 h-full w-full">
       <AutoSizer
-        style={{ height: "100%", width: "100%" }}
-        ChildComponent={GridChild}
+        renderProp={({ height, width }) => {
+          if (!height || !width) return <span />;
+
+          const scrollbarWidth = 17;
+          const availableWidth = width - scrollbarWidth;
+          const minColumnWidth = 300;
+          const columnCount = Math.floor(availableWidth / minColumnWidth) || 1;
+          const columnWidth = Math.floor(availableWidth / columnCount);
+          const rowCount = Math.ceil(fonts.length / columnCount);
+          const rowHeight = 320;
+          const gridData = { ...itemData, columnCount };
+
+          return (
+            <Grid
+              columnCount={columnCount}
+              columnWidth={columnWidth}
+              rowCount={rowCount}
+              rowHeight={rowHeight}
+              height={height}
+              width={width}
+              itemData={gridData}
+              itemKey={itemKey}
+              overscanRowCount={2}
+              overscanColumnCount={1}
+            >
+              {Cell}
+            </Grid>
+          );
+        }}
       />
     </div>
   );

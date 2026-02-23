@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import {
   Search,
   Type,
@@ -10,6 +11,7 @@ import {
   Palette,
   Loader2,
   Check,
+  X,
 } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
 import {
@@ -66,33 +68,50 @@ export function Header({
   return (
     <header className="bg-background draggable-region flex h-20 shrink-0 items-center justify-between gap-8 border-b pr-36 pl-8">
       {/* Search */}
-      <div className="no-drag flex max-w-xs flex-1 items-center gap-4">
-        <Search className="text-muted-foreground h-5 w-5" />
-        <input
-          type="search"
+      <div
+        className="flex max-w-xs flex-1 items-center gap-4"
+        style={{ WebkitAppRegion: "no-drag" } as any}
+      >
+        <Search className="text-muted-foreground h-5 w-5 shrink-0" />
+        <Input
+          type="text"
           placeholder="Search fonts..."
           value={searchQuery}
           onChange={(e) => onSearchChange(e.target.value)}
-          className="placeholder:text-muted-foreground w-full border-none bg-transparent text-sm focus:outline-none"
         />
+        {searchQuery && (
+          <button
+            type="button"
+            onClick={() => onSearchChange("")}
+            className="shrink-0 rounded-sm p-0.5 transition-opacity opacity-70 hover:opacity-100"
+            title="Clear search"
+          >
+            <X className="text-foreground h-4 w-4" />
+          </button>
+        )}
       </div>
 
       <div className="bg-border mx-2 h-8 w-px" />
 
       {/* Preview Text */}
-      <div className="no-drag flex flex-1 items-center gap-4">
+      <div
+        className="flex flex-1 items-center gap-4"
+        style={{ WebkitAppRegion: "no-drag" } as any}
+      >
         <Type className="text-muted-foreground h-4 w-4" />
-        <input
+        <Input
           type="text"
           placeholder="Type something to preview..."
           value={previewText}
           onChange={(e) => setPreviewText(e.target.value)}
-          className="placeholder:text-muted-foreground w-full border-none bg-transparent text-sm focus:outline-none"
         />
       </div>
 
       {/* Controls */}
-      <div className="no-drag flex items-center gap-6">
+      <div
+        className="flex items-center gap-6"
+        style={{ WebkitAppRegion: "no-drag" } as any}
+      >
         <div className="flex w-48 items-center gap-3">
           <span className="text-muted-foreground w-8 text-right text-[10px] font-bold">
             {fontSize}px
@@ -136,7 +155,7 @@ export function Header({
                     <Palette className="text-muted-foreground h-4 w-4" />
                     <h3 className="text-sm font-medium">Appearance</h3>
                   </div>
-                  <div className="bg-secondary/30 rounded-lg border p-3">
+                  <div className="bg-card rounded-lg border p-3">
                     <div className="flex items-center justify-between">
                       <div className="space-y-0.5">
                         <span className="text-sm font-medium">Dark Mode</span>
@@ -158,7 +177,7 @@ export function Header({
                     <Database className="text-muted-foreground h-4 w-4" />
                     <h3 className="text-sm font-medium">Database</h3>
                   </div>
-                  <div className="bg-secondary/30 rounded-lg border p-3">
+                  <div className="bg-card rounded-lg border p-3">
                     <p className="text-muted-foreground mb-3 text-xs">
                       Rebuild the font database if you notice missing fonts or
                       inconsistent metadata. This may take a few moments.

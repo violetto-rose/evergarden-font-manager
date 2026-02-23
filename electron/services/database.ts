@@ -36,21 +36,25 @@ export function initDatabase() {
 
   // Add is_favorite column if it doesn't exist (for existing databases)
   try {
-    db.exec(`
-      ALTER TABLE fonts ADD COLUMN is_favorite INTEGER DEFAULT 0;
-    `);
+    db.exec(`ALTER TABLE fonts ADD COLUMN is_favorite INTEGER DEFAULT 0;`);
   } catch (e) {
     // Column already exists, ignore
   }
 
   // Add index for is_favorite if it doesn't exist
   try {
-    db.exec(`
-      CREATE INDEX IF NOT EXISTS idx_favorite ON fonts(is_favorite);
-    `);
+    db.exec(`CREATE INDEX IF NOT EXISTS idx_favorite ON fonts(is_favorite);`);
   } catch (e) {
     // Index already exists, ignore
   }
+
+  // Normalize last_seen from milliseconds to seconds for any existing rows
+  // that were stored with Date.now() (ms). Values > 4102444800 are ms.
+  db.exec(`
+    UPDATE fonts
+    SET last_seen = last_seen / 1000
+    WHERE last_seen > 4102444800;
+  `);
 }
 
 interface FontData {
@@ -114,8 +118,13 @@ export function getAllFonts() {
         SELECT file_path FROM fonts f2
         WHERE f2.family = fonts.family
         ORDER BY
+          CASE WHEN lower(f2.subfamily) = 'regular' THEN 0
+               WHEN f2.subfamily LIKE '%Regular%' THEN 1
+               WHEN f2.subfamily LIKE '%Normal%'  THEN 2
+               WHEN f2.subfamily LIKE '%Roman%'   THEN 3
+               WHEN f2.subfamily LIKE '%Book%'    THEN 4
+               ELSE 5 END,
           CASE WHEN f2.subfamily LIKE '%Italic%' THEN 1 ELSE 0 END,
-          CASE WHEN f2.subfamily LIKE '%Regular%' THEN 1 WHEN f2.subfamily LIKE '%Normal%' THEN 2 WHEN f2.subfamily LIKE '%Roman%' THEN 3 WHEN f2.subfamily LIKE '%Book%' THEN 4 ELSE 5 END,
           f2.weight ASC,
           f2.id
         LIMIT 1
@@ -126,7 +135,8 @@ export function getAllFonts() {
       MIN(category) as category,
       MIN(subcategory) as subcategory,
       MAX(is_favorite) as is_favorite,
-      COUNT(*) as variant_count
+      COUNT(*) as variant_count,
+      MAX(last_seen) as last_seen
     FROM fonts
     GROUP BY family
     ORDER BY family ASC
@@ -161,8 +171,13 @@ export function getFavorites() {
         SELECT file_path FROM fonts f2
         WHERE f2.family = fonts.family
         ORDER BY
+          CASE WHEN lower(f2.subfamily) = 'regular' THEN 0
+               WHEN f2.subfamily LIKE '%Regular%' THEN 1
+               WHEN f2.subfamily LIKE '%Normal%'  THEN 2
+               WHEN f2.subfamily LIKE '%Roman%'   THEN 3
+               WHEN f2.subfamily LIKE '%Book%'    THEN 4
+               ELSE 5 END,
           CASE WHEN f2.subfamily LIKE '%Italic%' THEN 1 ELSE 0 END,
-          CASE WHEN f2.subfamily LIKE '%Regular%' THEN 1 WHEN f2.subfamily LIKE '%Normal%' THEN 2 WHEN f2.subfamily LIKE '%Roman%' THEN 3 WHEN f2.subfamily LIKE '%Book%' THEN 4 ELSE 5 END,
           f2.weight ASC,
           f2.id
         LIMIT 1
@@ -171,7 +186,8 @@ export function getFavorites() {
       MIN(metadata_json) as metadata_json,
       MIN(category) as category,
       MIN(subcategory) as subcategory,
-      COUNT(*) as variant_count
+      COUNT(*) as variant_count,
+      MAX(last_seen) as last_seen
     FROM fonts
     WHERE is_favorite = 1
     GROUP BY family
@@ -227,3 +243,46 @@ export function getFontVariants(family: string) {
     )
     .all(family);
 }
+
+/** Fonts seen/added in the last 30 days, ordered newest first. */
+export function getRecentFonts(days = 30) {
+  // cutoff in Unix seconds (last_seen is stored as seconds after the migration)
+  const cutoff = Math.floor(Date.now() / 1000) - days * 86400;
+  return db
+    .prepare(
+      `
+    SELECT
+      MIN(id) as id,
+      family,
+      GROUP_CONCAT(subfamily, ', ') as subfamily,
+      (
+        SELECT file_path FROM fonts f2
+        WHERE f2.family = fonts.family
+        ORDER BY
+          CASE WHEN lower(f2.subfamily) = 'regular' THEN 0
+               WHEN f2.subfamily LIKE '%Regular%' THEN 1
+               WHEN f2.subfamily LIKE '%Normal%'  THEN 2
+               WHEN f2.subfamily LIKE '%Roman%'   THEN 3
+               WHEN f2.subfamily LIKE '%Book%'    THEN 4
+               ELSE 5 END,
+          CASE WHEN f2.subfamily LIKE '%Italic%' THEN 1 ELSE 0 END,
+          f2.weight ASC,
+          f2.id
+        LIMIT 1
+      ) as preview_file_path,
+      MIN(file_path) as file_path,
+      MIN(metadata_json) as metadata_json,
+      MIN(category) as category,
+      MIN(subcategory) as subcategory,
+      MAX(is_favorite) as is_favorite,
+      COUNT(*) as variant_count,
+      MAX(last_seen) as last_seen
+    FROM fonts
+    WHERE last_seen >= ?
+    GROUP BY family
+    ORDER BY last_seen DESC
+  `
+    )
+    .all(cutoff);
+}
+

@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld("api", {
     ipcRenderer.invoke("get-font-variants", family),
   revealInFolder: (filePath: string) =>
     ipcRenderer.invoke("reveal-in-folder", filePath),
+  getRecentFonts: () => ipcRenderer.invoke("get-recent-fonts"),
   onScanProgress: (callback: (count: number) => void) => {
     ipcRenderer.on("scan-progress", (_event, count) => callback(count));
   },

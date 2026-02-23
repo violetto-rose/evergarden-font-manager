@@ -6,6 +6,7 @@ import {
   getAllFonts,
   toggleFavorite,
   getFontVariants,
+  getRecentFonts,
 } from "./services/database";
 import { scanFonts } from "./services/font-scanner";
 import { startWatcher } from "./services/watcher";
@@ -133,3 +134,8 @@ ipcMain.handle("get-font-variants", (_event, family: string) => {
 ipcMain.handle("reveal-in-folder", (_event, filePath: string) => {
   shell.showItemInFolder(filePath);
 });
+
+ipcMain.handle("get-recent-fonts", () => {
+  return getRecentFonts();
+});
+

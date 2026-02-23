@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useDeferredValue } from "react";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { FontGrid } from "./components/FontGrid";
@@ -12,6 +12,7 @@ declare global {
       toggleFavorite: (family: string, isFavorite: boolean) => Promise<void>;
       getFontVariants: (family: string) => Promise<any[]>;
       revealInFolder: (filePath: string) => Promise<void>;
+      getRecentFonts: () => Promise<any[]>;
       onScanProgress: (callback: (count: number) => void) => void;
       removeScanProgressListener: () => void;
       versions: {
@@ -29,6 +30,8 @@ function App() {
   const [loading, setLoading] = useState(false);
   const [scanningCount, setScanningCount] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
+  // Deferred: input is always responsive; grid re-filters only after typing settles
+  const deferredSearchQuery = useDeferredValue(searchQuery);
   const [categoryFilter, setCategoryFilter] = useState<{
     category: string | null;
     subcategory: string | null;
@@ -106,8 +109,8 @@ function App() {
     () =>
       fonts.filter((font) => {
         const matchesSearch =
-          !searchQuery ||
-          font.family.toLowerCase().includes(searchQuery.toLowerCase());
+          !deferredSearchQuery ||
+          font.family.toLowerCase().includes(deferredSearchQuery.toLowerCase());
 
         const fontCategory = (font.category ?? "").trim().toLowerCase();
         const fontSubcategory = (font.subcategory ?? "").trim().toLowerCase();
@@ -119,7 +122,9 @@ function App() {
 
         const matchesView =
           selectedView === "all" ||
-          (selectedView === "favorites" && font.is_favorite === 1);
+          (selectedView === "favorites" && font.is_favorite === 1) ||
+          (selectedView === "recently-added" &&
+            font.last_seen >= Math.floor(Date.now() / 1000) - 30 * 86400);
 
         return (
           matchesSearch &&
@@ -130,7 +135,7 @@ function App() {
       }),
     [
       fonts,
-      searchQuery,
+      deferredSearchQuery,
       selectedCategory,
       selectedSubcategory,
       selectedView,
@@ -141,7 +146,11 @@ function App() {
   const fontsInView =
     selectedView === "favorites"
       ? fonts.filter((f) => f.is_favorite === 1)
-      : fonts;
+      : selectedView === "recently-added"
+        ? fonts.filter(
+          (f) => f.last_seen >= Math.floor(Date.now() / 1000) - 30 * 86400
+        )
+        : fonts;
   const categoryCounts = fontsInView.reduce<Record<string, number>>(
     (acc, font) => {
       const c = (font.category ?? "").trim() || "Sans Serif";
