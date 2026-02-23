@@ -18,10 +18,28 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: "20"
-          cache: "npm"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+          run_install: false
+
+      - name: Get pnpm store directory
+        shell: bash
+        run: |
+          echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+
+      - uses: actions/cache@v4
+        name: Setup pnpm cache
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-store-${{ hashFiles('**/pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-pnpm-store-
 
       - name: Install dependencies
-        run: npm ci
+        run: pnpm install --frozen-lockfile
 
       - name: Verify tag matches package.json version
         shell: pwsh
@@ -34,15 +52,17 @@ jobs:
           }
 
       - name: Build installer
-        run: npm run dist
+        run: pnpm run dist
 
       - name: Build portable
-        run: npm run dist:portable
+        run: pnpm run dist:portable
 
       - name: Create GitHub Release and upload installer
         uses: softprops/action-gh-release@v2
         with:
-          draft: true
+          draft: false
+          prerelease: false
+          generate_release_notes: true
           files: |
             release/installer/*.exe
             release/installer/*.blockmap

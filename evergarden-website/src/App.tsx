@@ -1,0 +1,258 @@
+import { motion, useScroll, useTransform } from 'framer-motion'
+import {
+  RiArrowRightLine as ArrowRight,
+  RiBox3Line as Box,
+  RiStackLine as Component,
+  RiGithubFill as Github,
+  RiLayoutGridLine as LayoutGrid,
+  RiSparklingLine as Sparkles,
+} from '@remixicon/react'
+
+
+// Header/Nav
+function Header() {
+  return (
+    <header className="fixed top-0 right-0 left-0 z-50 flex items-center justify-between border-b border-white/5 bg-black/40 px-6 py-4 backdrop-blur-md md:px-12">
+      <div className="flex items-center gap-3">
+        <img src="/logo.svg" alt="Evergarden Logo" className="h-14 object-contain" />
+      </div>
+      <nav className="hidden items-center gap-8 font-mono text-xs font-medium tracking-widest uppercase text-zinc-400 md:flex">
+        <a href="#features" className="transition-colors hover:text-white">
+          Features
+        </a>
+        <a href="#preview" className="transition-colors hover:text-white">
+          Preview
+        </a>
+        <a
+          href="https://github.com/violetto-rose/evergarden-font-manager"
+          target="_blank"
+          rel="noreferrer"
+          className="flex items-center gap-2 transition-colors hover:text-white"
+        >
+          <Github className="size-4" />
+          <span>GitHub</span>
+        </a>
+      </nav>
+      <a
+        href="https://github.com/violetto-rose/evergarden-font-manager/releases/latest/download/Evergarden.Font.Manager.Setup.exe"
+        className="rounded-full bg-white px-5 py-2.5 font-mono text-xs font-semibold tracking-wider text-black uppercase transition-colors hover:bg-zinc-200"
+      >
+        Download Now
+      </a>
+    </header>
+  )
+}
+
+function Hero() {
+  return (
+    <section className="relative flex flex-col items-center justify-center overflow-hidden px-6 pt-32 pb-20 text-center md:pt-48 md:pb-32">
+      {/* Background glow */}
+      <div className="pointer-events-none absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-600/20 blur-[120px]" />
+
+      <motion.div
+        initial={{ opacity: 0, y: 30 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, ease: 'easeOut' }}
+        className="relative z-10 max-w-4xl"
+      >
+        <div className="mb-8 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-1.5 font-mono text-xs font-semibold tracking-wider text-zinc-300 uppercase backdrop-blur-sm">
+          <Sparkles className="size-4 text-purple-400" />
+          <span>The ultimate font manager for designers</span>
+        </div>
+
+        <h1 className="mb-6 p-2 bg-linear-to-b from-white to-white/50 bg-clip-text text-5xl leading-[1.1] font-bold text-transparent md:text-7xl lg:text-8xl">
+          <span className="font-sans font-bold tracking-tight">Manage your fonts</span> <br />
+          <span className="font-serif font-light tracking-tight italic">with elegance.</span>
+        </h1>
+
+        <p className="mx-auto mb-12 max-w-2xl text-xl leading-relaxed font-light tracking-wide text-zinc-400 md:text-2xl">
+          A lightning-fast, beautifully designed font manager that feels like magic. Preview,
+          organize, and discover typography like never before.
+        </p>
+
+        <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
+          <a
+            href="https://github.com/violetto-rose/evergarden-font-manager/releases/latest/download/Evergarden.Font.Manager.Setup.exe"
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-full bg-white px-8 font-mono text-sm font-semibold tracking-widest text-black transition-all hover:bg-zinc-200 sm:w-auto"
+          >
+            Download for Windows
+            <ArrowRight className="size-5" />
+          </a>
+          <a
+            href="https://github.com/violetto-rose/evergarden-font-manager/releases/latest/download/Evergarden.Font.Manager.exe"
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-full border border-white/10 bg-white/5 px-8 font-mono text-sm font-semibold tracking-widest text-white transition-all hover:bg-white/10 sm:w-auto"
+          >
+            Download Portable
+          </a>
+        </div>
+      </motion.div>
+    </section>
+  )
+}
+
+function Preview() {
+  const { scrollYProgress } = useScroll()
+  const y1 = useTransform(scrollYProgress, [0, 1], [100, -100])
+  const y2 = useTransform(scrollYProgress, [0, 1], [200, -50])
+
+  return (
+    <section id="preview" className="relative px-6 py-24 md:px-12">
+      <div className="relative mx-auto h-[800px] max-w-7xl md:h-[900px]">
+        {/* Abstract shapes behind the images */}
+        <div className="absolute inset-0 rounded-3xl bg-linear-to-tr from-indigo-500/10 to-purple-500/10 blur-[80px]" />
+
+        {/* Main Interface Screenshot */}
+        <motion.div
+          style={{ y: y1 }}
+          className="absolute top-[10%] left-0 z-20 w-full overflow-hidden rounded-xl border border-white/10 bg-[#1a1a1a] shadow-2xl shadow-purple-500/20 lg:left-[5%] lg:w-[70%]"
+        >
+          <div className="group relative aspect-16/10 overflow-hidden bg-zinc-900">
+            <img
+              src="/images/evergarden-font-manager.webp"
+              alt="Evergarden Font Home Interface"
+              className="h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-[1.02]"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                target.style.display = 'none'
+                target.parentElement!.innerHTML =
+                  '<div class="absolute inset-0 flex items-center justify-center text-zinc-500 text-lg">Replace with /font-home.png</div>'
+              }}
+            />
+          </div>
+        </motion.div>
+
+        {/* Font Preview Screenshot */}
+        <motion.div
+          style={{ y: y2 }}
+          className="absolute top-[40%] right-0 z-30 hidden w-full overflow-hidden rounded-xl border border-white/10 bg-[#1a1a1a] shadow-2xl shadow-indigo-500/20 md:block lg:right-[5%] lg:w-[60%]"
+        >
+          <div className="group relative aspect-16/10 overflow-hidden bg-zinc-800">
+            <img
+              src="/images/evergarden-font-preview.webp"
+              alt="Evergarden Font Preview Interface"
+              className="h-full w-full object-cover object-center transition-transform duration-700 group-hover:scale-[1.02]"
+              onError={(e) => {
+                const target = e.target as HTMLImageElement
+                target.style.display = 'none'
+                target.parentElement!.innerHTML =
+                  '<div class="absolute inset-0 flex items-center justify-center text-zinc-500 text-lg">Replace with /font-preview.png</div>'
+              }}
+            />
+          </div>
+        </motion.div>
+      </div>
+    </section>
+  )
+}
+
+function Features() {
+  const features = [
+    {
+      icon: <LayoutGrid className="size-6 text-indigo-400" />,
+      title: 'Beautiful Grid View',
+      description: 'Browse your typography collection in a stunning masonry layout.',
+    },
+    {
+      icon: <Component className="size-6 text-purple-400" />,
+      title: 'In-Depth Previews',
+      description:
+        'Test run fonts, inspect glyphs, and check metrics without opening a design tool.',
+    },
+    {
+      icon: <Box className="size-6 text-pink-400" />,
+      title: 'Local Database',
+      description: 'Powered by SQLite locally for blazing fast performance, fully offline capable.',
+    },
+  ]
+
+  return (
+    <section
+      id="features"
+      className="relative z-10 border-t border-white/5 bg-zinc-950/50 px-6 py-24 md:px-12"
+    >
+      <div className="mx-auto max-w-7xl">
+        <div className="mb-20 text-center">
+          <h2 className="mb-6 font-serif text-4xl leading-tight font-light md:text-6xl">
+            <span className="font-sans font-bold tracking-tight">Everything you need.</span> <br className="hidden md:block" />
+            <span className="text-zinc-400 italic tracking-tight">Nothing you don't.</span>
+          </h2>
+          <p className="mx-auto max-w-2xl font-mono text-sm tracking-widest text-zinc-500 uppercase">
+            Designed meticulously to provide a seamless experience.
+          </p>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          {features.map((feature, i) => (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              transition={{ delay: i * 0.1, duration: 0.5 }}
+              viewport={{ once: true, margin: '-100px' }}
+              key={i}
+              className="group rounded-3xl border border-white/5 bg-white/5 p-8 transition-all hover:border-white/10 hover:bg-white/10"
+            >
+              <div className="mb-6 flex size-12 items-center justify-center rounded-2xl bg-white/5 transition-transform group-hover:scale-110 group-hover:bg-white/10">
+                {feature.icon}
+              </div>
+              <h3 className="mb-3 font-serif text-2xl font-medium text-white">{feature.title}</h3>
+              <p className="font-light leading-relaxed text-zinc-400">{feature.description}</p>
+            </motion.div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function CTA() {
+  return (
+    <section className="relative overflow-hidden px-6 py-32 text-center">
+      <div className="absolute inset-0 bg-linear-to-b from-transparent to-indigo-900/20" />
+      <div className="relative z-10 mx-auto max-w-3xl">
+        <h2 className="mb-10 font-serif text-5xl leading-tight font-light md:text-7xl">
+          <span className="font-sans font-bold tracking-tighter">Ready to</span> <br />
+          <span className="text-indigo-300 italic">transform your workflow?</span>
+        </h2>
+        <a
+          href="https://github.com/violetto-rose/evergarden-font-manager/releases/latest"
+          className="inline-flex h-14 items-center justify-center rounded-full bg-white px-10 font-mono text-sm font-semibold tracking-widest text-black uppercase transition-all hover:scale-105 hover:bg-zinc-200 shadow-[0_0_40px_-5px_rgba(255,255,255,0.3)]"
+        >
+          Get Started Free
+        </a>
+      </div>
+    </section>
+  )
+}
+
+function Footer() {
+  return (
+    <footer className="border-t border-white/10 bg-black px-6 pt-16 pb-8 md:px-12">
+      <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 md:flex-row">
+        <div className="mb-4 flex items-center gap-3 md:mb-0">
+          <img src="/logo.svg" alt="Evergarden Logo" className="h-12 object-contain" />
+        </div>
+
+        <p className="font-mono text-xs tracking-wider text-zinc-500 uppercase">
+          © {new Date().getFullYear()} Evergarden. All rights reserved.
+        </p>
+      </div>
+    </footer>
+  )
+}
+
+function App() {
+  return (
+    <div className="min-h-screen overflow-x-hidden bg-black font-sans text-white antialiased selection:bg-purple-500/30">
+      <Header />
+      <main>
+        <Hero />
+        <Preview />
+        <Features />
+        <CTA />
+      </main>
+      <Footer />
+    </div>
+  )
+}
+
+export default App

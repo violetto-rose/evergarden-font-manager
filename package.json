@@ -1,7 +1,7 @@
 {
   "name": "evergarden-font-manager",
   "private": true,
-  "version": "0.1.0-beta.1",
+  "version": "0.1.0-beta.2",
   "main": "dist-electron/main.js",
   "license": "MIT",
   "scripts": {
@@ -96,7 +96,11 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "artifactName": "Evergarden.Font.Manager.Setup.${ext}"
+    },
+    "portable": {
+      "artifactName": "Evergarden.Font.Manager.${ext}"
     },
     "mac": {
       "target": "dmg",
