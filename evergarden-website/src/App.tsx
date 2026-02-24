@@ -8,7 +8,6 @@ import {
   RiSparklingLine as Sparkles,
 } from '@remixicon/react'
 
-
 // Header/Nav
 function Header() {
   return (
@@ -16,7 +15,7 @@ function Header() {
       <div className="flex items-center gap-3">
         <img src="/logo.svg" alt="Evergarden Logo" className="h-14 object-contain" />
       </div>
-      <nav className="hidden items-center gap-8 font-mono text-xs font-medium tracking-widest uppercase text-zinc-400 md:flex">
+      <nav className="hidden items-center gap-8 font-mono text-xs font-medium tracking-widest text-zinc-400 uppercase md:flex">
         <a href="#features" className="transition-colors hover:text-white">
           Features
         </a>
@@ -45,7 +44,7 @@ function Header() {
 
 function Hero() {
   return (
-    <section className="relative flex flex-col items-center justify-center overflow-hidden px-6 pt-32 pb-20 text-center md:pt-48 md:pb-32">
+    <section className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden px-6 text-center">
       {/* Background glow */}
       <div className="pointer-events-none absolute top-1/2 left-1/2 h-[600px] w-[600px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-purple-600/20 blur-[120px]" />
 
@@ -60,7 +59,7 @@ function Hero() {
           <span>The ultimate font manager for designers</span>
         </div>
 
-        <h1 className="mb-6 p-2 bg-linear-to-b from-white to-white/50 bg-clip-text text-5xl leading-[1.1] font-bold text-transparent md:text-7xl lg:text-8xl">
+        <h1 className="mb-6 bg-linear-to-b from-white to-white/50 bg-clip-text p-2 text-5xl leading-[1.1] font-bold text-transparent md:text-7xl lg:text-8xl">
           <span className="font-sans font-bold tracking-tight">Manage your fonts</span> <br />
           <span className="font-serif font-light tracking-tight italic">with elegance.</span>
         </h1>
@@ -173,8 +172,9 @@ function Features() {
       <div className="mx-auto max-w-7xl">
         <div className="mb-20 text-center">
           <h2 className="mb-6 font-serif text-4xl leading-tight font-light md:text-6xl">
-            <span className="font-sans font-bold tracking-tight">Everything you need.</span> <br className="hidden md:block" />
-            <span className="text-zinc-400 italic tracking-tight">Nothing you don't.</span>
+            <span className="font-sans font-bold tracking-tight">Everything you need.</span>{' '}
+            <br className="hidden md:block" />
+            <span className="tracking-tight text-zinc-400 italic">Nothing you don't.</span>
           </h2>
           <p className="mx-auto max-w-2xl font-mono text-sm tracking-widest text-zinc-500 uppercase">
             Designed meticulously to provide a seamless experience.
@@ -195,7 +195,7 @@ function Features() {
                 {feature.icon}
               </div>
               <h3 className="mb-3 font-serif text-2xl font-medium text-white">{feature.title}</h3>
-              <p className="font-light leading-relaxed text-zinc-400">{feature.description}</p>
+              <p className="leading-relaxed font-light text-zinc-400">{feature.description}</p>
             </motion.div>
           ))}
         </div>
@@ -215,7 +215,7 @@ function CTA() {
         </h2>
         <a
           href="https://github.com/violetto-rose/evergarden-font-manager/releases/latest"
-          className="inline-flex h-14 items-center justify-center rounded-full bg-white px-10 font-mono text-sm font-semibold tracking-widest text-black uppercase transition-all hover:scale-105 hover:bg-zinc-200 shadow-[0_0_40px_-5px_rgba(255,255,255,0.3)]"
+          className="inline-flex h-14 items-center justify-center rounded-full bg-white px-10 font-mono text-sm font-semibold tracking-widest text-black uppercase shadow-[0_0_40px_-5px_rgba(255,255,255,0.3)] transition-all hover:scale-105 hover:bg-zinc-200"
         >
           Get Started Free
         </a>
