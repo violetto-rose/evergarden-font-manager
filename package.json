@@ -85,6 +85,12 @@
       "dist-electron/**/*",
       "package.json"
     ],
+    "extraResources": [
+      {
+        "from": "build/icons/icon.ico",
+        "to": "icon.ico"
+      }
+    ],
     "asar": true,
     "asarUnpack": [
       "**/*.node",

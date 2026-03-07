@@ -1,43 +1,18 @@
 /**
- * Universal Font Metadata Bridge — typographic taxonomy aligned with
- * Google Fonts / Adobe Fonts and internet-standard classifications.
+ * Universal Font Metadata Bridge — typographic taxonomy.
+ * Categories: Fancy, Foreign look, Techno, Gothic, Basic, Script.
  * Keys are normalized lowercase family names for lookup.
  */
 
 export type FontCategory =
-  | "Serif"
-  | "Sans Serif"
-  | "Monospace"
-  | "Cursive"
-  | "Display";
+  | "Fancy"
+  | "Foreign look"
+  | "Techno"
+  | "Gothic"
+  | "Basic"
+  | "Script";
 
-export type SerifSubcategory =
-  | "Slab Serif"
-  | "Old Style"
-  | "Transitional"
-  | "Didone";
-
-export type SansSerifSubcategory =
-  | "Geometric"
-  | "Humanist"
-  | "Grotesque"
-  | "Neo-Grotesque";
-
-export type CursiveSubcategory = "Script" | "Handwriting";
-
-export type DisplaySubcategory =
-  | "Decorative"
-  | "Blackletter"
-  | "Stencil";
-
-export type MonospaceSubcategory = "Code";
-
-export type FontSubcategory =
-  | SerifSubcategory
-  | SansSerifSubcategory
-  | CursiveSubcategory
-  | DisplaySubcategory
-  | MonospaceSubcategory;
+export type FontSubcategory = string; // Subcategories vary by category; see FONT_CATEGORIES in @/lib/font-categories
 
 export interface FontMetadataEntry {
   category: FontCategory;

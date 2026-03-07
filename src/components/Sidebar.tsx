@@ -2,62 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import logo from "../../assets/logo.svg";
 import logoDark from "../../assets/logo-dark.svg";
-import {
-  Grid,
-  Clock,
-  Heart,
-  Type,
-  List,
-  Monitor,
-  PenTool,
-  Code,
-  ChevronDown,
-  ChevronRight,
-} from "lucide-react";
-
-/** Category + subcategories (matches font-metadata-bridge taxonomy). Handwriting = Cursive in DB. */
-const CATEGORIES: {
-  value: string;
-  label: string;
-  icon: typeof Type;
-  subcategories: string[];
-}[] = [
-    {
-      value: "Serif",
-      label: "Serif",
-      icon: Type,
-      subcategories: ["Slab Serif", "Old Style", "Transitional", "Didone"],
-    },
-    {
-      value: "Sans Serif",
-      label: "Sans Serif",
-      icon: Monitor,
-      subcategories: [
-        "Geometric",
-        "Humanist",
-        "Grotesque",
-        "Neo-Grotesque",
-      ],
-    },
-    {
-      value: "Display",
-      label: "Display",
-      icon: List,
-      subcategories: ["Decorative", "Blackletter", "Stencil"],
-    },
-    {
-      value: "Cursive",
-      label: "Handwriting",
-      icon: PenTool,
-      subcategories: ["Script", "Handwriting"],
-    },
-    {
-      value: "Monospace",
-      label: "Monospace",
-      icon: Code,
-      subcategories: [], // all are code; no subcategory filter
-    },
-  ];
+import { Grid, Clock, Heart, ChevronDown, ChevronRight } from "lucide-react";
+import { FONT_CATEGORIES } from "@/lib/font-categories";
 
 interface SidebarProps {
   selectedCategory: string | null;
@@ -153,7 +99,7 @@ export function Sidebar({
               Categories
             </p>
             <ul className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-              {CATEGORIES.map(({ value, label, icon: Icon, subcategories }) => {
+              {FONT_CATEGORIES.map(({ value, label, icon: Icon, subcategories }) => {
                 const isExpanded = expandedCategory === value;
                 const isCategorySelected = selectedCategory === value;
                 const catCount = categoryCounts[value] ?? 0;
