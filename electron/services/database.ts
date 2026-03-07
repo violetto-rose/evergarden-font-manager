@@ -48,6 +48,13 @@ export function initDatabase() {
     // Index already exists, ignore
   }
 
+  // Track whether the font has been installed to the OS fonts directory
+  try {
+    db.exec(`ALTER TABLE fonts ADD COLUMN is_os_installed INTEGER DEFAULT 0;`);
+  } catch (e) {
+    // Column already exists, ignore
+  }
+
   // Normalize last_seen from milliseconds to seconds for any existing rows
   // that were stored with Date.now() (ms). Values > 4102444800 are ms.
   db.exec(`
@@ -77,32 +84,38 @@ interface FontData {
 }
 
 export function saveFont(fontData: FontData) {
-  const stmt = db.prepare(`
-    INSERT INTO fonts (
-        file_path, file_hash, family, subfamily, full_name, postscript_name,
-        weight, width, italic, monospace, category, subcategory, version, copyright, metadata_json, last_seen
-    ) VALUES (
-        @file_path, @file_hash, @family, @subfamily, @full_name, @postscript_name,
-        @weight, @width, @italic, @monospace, @category, @subcategory, @version, @copyright, @metadata_json, @last_seen
-    )
-    ON CONFLICT(file_path) DO UPDATE SET
-        last_seen = @last_seen,
-        file_hash = @file_hash,
-        metadata_json = @metadata_json,
-        family = @family,
-        subfamily = @subfamily,
-        full_name = @full_name,
-        postscript_name = @postscript_name,
-        weight = @weight,
-        width = @width,
-        italic = @italic,
-        monospace = @monospace,
-        category = @category,
-        subcategory = @subcategory,
-        version = @version,
-        copyright = @copyright
-  `);
-  stmt.run(fontData);
+  try {
+    const stmt = db.prepare(`
+      INSERT INTO fonts (
+          file_path, file_hash, family, subfamily, full_name, postscript_name,
+          weight, width, italic, monospace, category, subcategory, version, copyright, metadata_json, last_seen
+      ) VALUES (
+          @file_path, @file_hash, @family, @subfamily, @full_name, @postscript_name,
+          @weight, @width, @italic, @monospace, @category, @subcategory, @version, @copyright, @metadata_json, @last_seen
+      )
+      ON CONFLICT(file_path) DO UPDATE SET
+          last_seen = @last_seen,
+          file_hash = @file_hash,
+          metadata_json = @metadata_json,
+          family = @family,
+          subfamily = @subfamily,
+          full_name = @full_name,
+          postscript_name = @postscript_name,
+          weight = @weight,
+          width = @width,
+          italic = @italic,
+          monospace = @monospace,
+          category = @category,
+          subcategory = @subcategory,
+          version = @version,
+          copyright = @copyright
+    `);
+    const info = stmt.run(fontData);
+    console.log(`[db] saveFont OK — family="${fontData.family}" changes=${info.changes} lastInsertRowid=${info.lastInsertRowid}`);
+  } catch (e: any) {
+    console.error(`[db] saveFont FAILED — family="${fontData.family}" path="${fontData.file_path}"`, e);
+    throw e;
+  }
 }
 
 export function getAllFonts() {
@@ -135,6 +148,7 @@ export function getAllFonts() {
       MIN(category) as category,
       MIN(subcategory) as subcategory,
       MAX(is_favorite) as is_favorite,
+      MAX(is_os_installed) as is_os_installed,
       COUNT(*) as variant_count,
       MAX(last_seen) as last_seen
     FROM fonts
@@ -195,6 +209,29 @@ export function getFavorites() {
   `
     )
     .all();
+}
+
+export function setOsInstalled(filePath: string, installed: boolean) {
+  db.prepare("UPDATE fonts SET is_os_installed = ? WHERE file_path = ?").run(
+    installed ? 1 : 0,
+    filePath
+  );
+}
+
+export function deleteFontByPath(filePath: string) {
+  db.prepare("DELETE FROM fonts WHERE file_path = ?").run(filePath);
+}
+
+export function deleteFontsByFamily(family: string) {
+  db.prepare("DELETE FROM fonts WHERE family = ?").run(family);
+}
+
+/** Returns all file_paths for a given font family. */
+export function getFontFilePathsByFamily(family: string): string[] {
+  const rows = db
+    .prepare("SELECT file_path FROM fonts WHERE family = ?")
+    .all(family) as { file_path: string }[];
+  return rows.map((r) => r.file_path);
 }
 
 /** One row per family with current category/subcategory for bridge generation. */

@@ -2,11 +2,18 @@ import fs from "fs";
 import path from "path";
 import crypto from "crypto";
 import os from "os";
+import { app } from "electron";
 import fontkit from "fontkit";
 import { saveFont } from "./database";
 import { categorizeFontFamily } from "./categorization";
+import { getOnlineCategoryForFamily } from "./online-font-metadata";
 
 const FONT_EXTENSIONS = new Set([".ttf", ".otf", ".woff", ".woff2"]);
+
+/** Directory where drag-dropped fonts are copied; included in scan + watcher. */
+export function getImportedFontsDirectory(): string {
+  return path.join(app.getPath("userData"), "ImportedFonts");
+}
 
 export function getSystemFontDirectories(): string[] {
   const platform = os.platform();
@@ -28,6 +35,8 @@ export function getSystemFontDirectories(): string[] {
     dirs.push("/usr/share/fonts");
     dirs.push(path.join(os.homedir(), ".fonts"));
   }
+
+  dirs.push(getImportedFontsDirectory());
   return dirs;
 }
 
@@ -97,10 +106,15 @@ export async function processFontFile(
   filePath: string
 ): Promise<FontMetadata | null> {
   const ext = path.extname(filePath).toLowerCase();
-  if (!FONT_EXTENSIONS.has(ext)) return null;
+  if (!FONT_EXTENSIONS.has(ext)) {
+    console.log(`[scanner] skipped (unsupported ext "${ext}"): ${filePath}`);
+    return null;
+  }
 
   try {
+    console.log(`[scanner] processing: ${filePath}`);
     const hash = await getFileHash(filePath);
+    console.log(`[scanner] hash: ${hash.slice(0, 8)}...`);
     const font = fontkit.openSync(filePath);
     let fontObj: any = font;
     if ("fonts" in font) {
@@ -156,12 +170,22 @@ export async function processFontFile(
       }
     }
 
-    // Always use heuristic so paid/demo/unknown fonts get classified; bridge is for reference only
-    const { category, subcategory } = categorizeFontFamily(
-      familyName,
-      subfamilyName,
-      isMonospace
-    );
+    // Prefer online metadata (Google Fonts) when available; fall back to local heuristic
+    let category: string;
+    let subcategory: string;
+    const online = await getOnlineCategoryForFamily(familyName);
+    if (online) {
+      category = online.category;
+      subcategory = online.subcategory;
+    } else {
+      const heuristic = categorizeFontFamily(
+        familyName,
+        subfamilyName,
+        isMonospace
+      );
+      category = heuristic.category;
+      subcategory = heuristic.subcategory;
+    }
 
     // Read OS/2 weight (100–900) when available
     const os2 = fontObj["OS/2"] ?? fontObj.os2;
@@ -192,13 +216,15 @@ export async function processFontFile(
       last_seen: Math.floor(Date.now() / 1000),
     };
 
+    console.log(`[scanner] saving to DB: family="${familyName}" subfamily="${subfamilyName}" path="${filePath}"`);
     saveFont(metadata);
+    console.log(`[scanner] saved OK: ${familyName}`);
     return metadata;
   } catch (e: any) {
     if (e.message === "Unknown font format") {
-      console.warn(`Skipping unsupported font format: ${filePath}`);
+      console.warn(`[scanner] skipped unsupported format: ${filePath}`);
     } else {
-      console.error(`Failed to process ${filePath}`, e);
+      console.error(`[scanner] FAILED to process: ${filePath}`, e);
     }
     return null;
   }

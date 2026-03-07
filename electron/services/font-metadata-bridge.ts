@@ -89,9 +89,9 @@ export function generateBridgeFromDatabase(): void {
   for (const row of rows) {
     const key = normalizeKey(row.family);
     next[key] = {
-      category: row.category || "Sans Serif",
-      subcategory: row.subcategory || "Neo-Grotesque",
-      tags: tagsFromEntry(row.family, row.category || "Sans Serif", row.subcategory || "Neo-Grotesque"),
+      category: row.category || "Basic",
+      subcategory: row.subcategory || "Various",
+      tags: tagsFromEntry(row.family, row.category || "Basic", row.subcategory || "Various"),
     };
   }
 

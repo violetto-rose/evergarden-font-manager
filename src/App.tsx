@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, useDeferredValue } from "react";
+import { useState, useEffect, useCallback, useMemo, useDeferredValue, useRef } from "react";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { FontGrid } from "./components/FontGrid";
@@ -7,14 +7,26 @@ import { FontDetailView } from "./components/FontDetailView";
 declare global {
   interface Window {
     api: {
+      // Drop import callbacks — registered once on mount
+      onDropPaths: (cb: (paths: string[]) => void) => void;
+      onImportProgress: (cb: (processed: number) => void) => void;
+      onImportDone: (cb: (result: { imported: number; failed: number; errors: string[] }, fonts: any[]) => void) => void;
+      // IPC
       scanFonts: () => Promise<any[]>;
       getFonts: () => Promise<any[]>;
       toggleFavorite: (family: string, isFavorite: boolean) => Promise<void>;
       getFontVariants: (family: string) => Promise<any[]>;
       revealInFolder: (filePath: string) => Promise<void>;
       getRecentFonts: () => Promise<any[]>;
+      importDroppedFonts: (paths: string[]) => Promise<{
+        imported: number;
+        failed: number;
+        errors: string[];
+      }>;
       onScanProgress: (callback: (count: number) => void) => void;
       removeScanProgressListener: () => void;
+      removeImportProgressListener: () => void;
+      uninstallFont: (family: string) => Promise<{ success: boolean; error?: string }>;
       versions: {
         electron: string;
         chrome: string;
@@ -49,6 +61,12 @@ function App() {
     const saved = localStorage.getItem("theme");
     return (saved as "light" | "dark") || "dark";
   });
+
+  const [isDragOver, setIsDragOver] = useState(false);
+  const dragCounterRef = useRef(0);
+  const [isImporting, setIsImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [importMessage, setImportMessage] = useState<string | null>(null);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -89,6 +107,79 @@ function App() {
         window.api.removeScanProgressListener();
       }
     };
+  }, []);
+
+
+  const handleDragEnter = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.types.includes("Files")) {
+      dragCounterRef.current += 1;
+      setIsDragOver(true);
+    }
+  }, []);
+
+  const handleDragOver = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  }, []);
+
+  const handleDragLeave = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current <= 0) {
+      dragCounterRef.current = 0;
+      setIsDragOver(false);
+    }
+  }, []);
+
+  // Register drop callbacks on the preload bridge once on mount.
+  // The preload's window listener reads File.path (available there despite
+  // contextIsolation) and calls these callbacks directly.
+  useEffect(() => {
+    if (!window.api?.onDropPaths) return;
+    window.api.onDropPaths((paths) => {
+      console.log("[app] onDropPaths:", paths);
+      setIsDragOver(false);
+      dragCounterRef.current = 0;
+      setIsImporting(true);
+      setImportProgress(0);
+      setImportMessage(null);
+    });
+    window.api.onImportProgress((processed) => {
+      setImportProgress(processed);
+    });
+    window.api.onImportDone((result, fonts) => {
+      console.log("[app] onImportDone:", result, "fonts:", fonts?.length);
+      if (fonts.length > 0) setFonts(fonts);
+      setIsImporting(false);
+      setIsDragOver(false);
+      dragCounterRef.current = 0;
+      setImportProgress(0);
+      if (result.imported > 0) {
+        setImportMessage(
+          result.failed > 0
+            ? `Imported ${result.imported} font(s); ${result.failed} failed.`
+            : `Imported ${result.imported} font(s).`
+        );
+      } else if (result.failed > 0 && result.errors.length > 0) {
+        setImportMessage(result.errors[0] || "Import failed.");
+      } else {
+        setImportMessage("No font files recognised. Use .ttf, .otf, .woff, or .woff2.");
+      }
+      setTimeout(() => setImportMessage(null), 4000);
+    });
+  }, []);
+
+  // Drop handler: only manages drag counter + isDragOver visual state.
+  // Actual import is handled by the preload capture listener above.
+  const handleDrop = useCallback((e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    dragCounterRef.current = 0;
+    setIsDragOver(false);
+    console.log("[app:handleDrop] fired, files:", e.dataTransfer?.files?.length ?? 0);
   }, []);
 
   const [rebuildDoneAt, setRebuildDoneAt] = useState<number | null>(null);
@@ -153,7 +244,7 @@ function App() {
         : fonts;
   const categoryCounts = fontsInView.reduce<Record<string, number>>(
     (acc, font) => {
-      const c = (font.category ?? "").trim() || "Sans Serif";
+      const c = (font.category ?? "").trim() || "Basic";
       acc[c] = (acc[c] ?? 0) + 1;
       return acc;
     },
@@ -163,8 +254,8 @@ function App() {
   const subcategoryCounts = fontsInView.reduce<
     Record<string, Record<string, number>>
   >((acc, font) => {
-    const c = (font.category ?? "").trim() || "Sans Serif";
-    const s = (font.subcategory ?? "").trim();
+    const c = (font.category ?? "").trim() || "Basic";
+    const s = (font.subcategory ?? "").trim() || "Various";
     if (!acc[c]) acc[c] = {};
     acc[c][s] = (acc[c][s] ?? 0) + 1;
     return acc;
@@ -186,7 +277,29 @@ function App() {
   }, []);
 
   return (
-    <div className="bg-background text-foreground flex h-screen w-full overflow-hidden font-sans">
+    <div
+      className="bg-background text-foreground flex h-screen w-full overflow-hidden font-sans relative"
+      onDragEnter={handleDragEnter}
+      onDragOver={handleDragOver}
+      onDragLeave={handleDragLeave}
+      onDrop={handleDrop}
+    >
+      {/* Full-window drag/import overlay — covers sidebar + main, blocks all clicks */}
+      {(isDragOver || isImporting) && (
+        <div className="fixed inset-0 z-100 flex items-center justify-center border-2 border-dashed border-primary/60 bg-primary/5 backdrop-blur-sm">
+          <div className="flex flex-col items-center gap-3 rounded-xl bg-background/90 px-8 py-6 shadow-lg">
+            <p className="text-foreground text-sm font-medium">
+              {isImporting
+                ? `Importing… ${importProgress} file(s) processed`
+                : "Drop font files to import"}
+            </p>
+            <p className="text-muted-foreground text-xs">
+              .ttf, .otf, .woff, .woff2 — metadata + online lookup applied
+            </p>
+          </div>
+        </div>
+      )}
+
       <Sidebar
         selectedCategory={selectedCategory}
         selectedSubcategory={selectedSubcategory}
@@ -232,6 +345,12 @@ function App() {
               </div>
             </div>
           )}
+
+          {importMessage && (
+            <div className="absolute bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-lg">
+              {importMessage}
+            </div>
+          )}
         </main>
 
         {selectedFontData && (
@@ -239,6 +358,12 @@ function App() {
             <FontDetailView
               font={selectedFontData}
               onBack={() => setSelectedFont(null)}
+              onUninstall={async (family: string) => {
+                if (!window.api?.uninstallFont) return;
+                await window.api.uninstallFont(family);
+                setSelectedFont(null);
+                await loadFonts();
+              }}
             />
           </div>
         )}
