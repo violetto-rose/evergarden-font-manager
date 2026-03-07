@@ -4,7 +4,9 @@ import Database from "better-sqlite3";
 import { categorizeFontFamily } from "./categorization";
 
 /**
- * Migrates existing fonts in the database to add category information
+ * Migrates existing fonts in the database to use the current category taxonomy
+ * (Fancy, Foreign look, Techno, Gothic, Basic, Script). Re-categorizes all
+ * fonts so existing data matches the new sidebar categories.
  */
 export async function migrateFontsWithCategories() {
   console.log("Starting category migration...");
@@ -12,27 +14,19 @@ export async function migrateFontsWithCategories() {
   const db = new Database(path.join(app.getPath("userData"), "fonts.db"));
 
   const allFonts: any[] = db.prepare("SELECT * FROM fonts").all();
+  const updateStmt = db.prepare(
+    "UPDATE fonts SET category = ?, subcategory = ? WHERE id = ?"
+  );
 
   let updated = 0;
   for (const font of allFonts) {
-    // Skip if already has category
-    if (font.category) continue;
-
     const { category, subcategory } = categorizeFontFamily(
       font.family,
       font.subfamily,
-      font.monospace
+      font.monospace ?? 0
     );
 
-    // Update the font with category info
-    db.prepare(
-      `
-      UPDATE fonts
-      SET category = ?, subcategory = ?
-      WHERE id = ?
-    `
-    ).run(category, subcategory, font.id);
-
+    updateStmt.run(category, subcategory, font.id);
     updated++;
   }
 

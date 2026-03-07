@@ -1,5 +1,5 @@
 import { useState, useMemo, useEffect, useRef, useCallback, useDeferredValue, useTransition, type ReactNode } from "react";
-import { ArrowLeft, FolderOpen, RotateCcw } from "lucide-react";
+import { ArrowLeft, FolderOpen, RotateCcw, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Switch } from "@/components/ui/switch";
@@ -7,9 +7,25 @@ import { cn } from "@/lib/utils";
 import logo from "../../assets/logo.svg";
 import logoDark from "../../assets/logo-dark.svg";
 
+/**
+ * Convert a local file path to a font:// URL.
+ * Uses a dummy "local" host so the Windows drive letter (C:) is treated as
+ * part of the path, not as the URL authority — avoiding ERR_UNKNOWN_URL_SCHEME
+ * and the missing-colon bug (font://C/... vs font://local/C:/...).
+ * Electron's font:// protocol handler strips the host and serves the file
+ * with the correct Content-Type, suppressing Chromium OTS cmap warnings.
+ */
+function toFontUrl(filePath: string): string {
+  const forward = filePath.replace(/\\/g, "/");
+  // Encode each path segment individually so slashes are preserved
+  const encoded = forward.split("/").map(encodeURIComponent).join("/");
+  return `font://local/${encoded}`;
+}
+
 interface FontDetailViewProps {
   font: any;
   onBack: () => void;
+  onUninstall?: (family: string) => Promise<void>;
 }
 
 const OPENTYPE_FEATURES = [
@@ -245,7 +261,7 @@ const DETAIL_TABS = [
   { id: "info" as const, label: "Info" },
 ];
 
-export function FontDetailView({ font, onBack }: FontDetailViewProps) {
+export function FontDetailView({ font, onBack, onUninstall }: FontDetailViewProps) {
   const [specimenText, setSpecimenText] = useState("Refinement");
   const [activeTab, setActiveTab] = useState<
     "specimen" | "glyphs" | "ligatures" | "ot" | "waterfall" | "info"
@@ -316,6 +332,34 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
   // Use selected variant or fallback to prop font
   const currentFont = selectedVariant || font;
 
+  const [showUninstallConfirm, setShowUninstallConfirm] = useState(false);
+  const [isUninstalling, setIsUninstalling] = useState(false);
+  const [uninstallError, setUninstallError] = useState<string | null>(null);
+
+  const isImportedFont = useMemo(() => {
+    const p = (font.all_file_paths || font.file_path || "").toLowerCase();
+    return (
+      p.includes("importedfonts") ||
+      p.includes("imported_fonts") ||
+      p.includes("\\microsoft\\windows\\fonts")
+    );
+  }, [font]);
+
+  const isOsInstalled = font.is_os_installed === 1;
+
+  const handleUninstall = useCallback(async () => {
+    if (!onUninstall) return;
+    setIsUninstalling(true);
+    setUninstallError(null);
+    try {
+      await onUninstall(font.family);
+    } catch (e: any) {
+      setUninstallError(e?.message || "Uninstall failed.");
+      setIsUninstalling(false);
+      setShowUninstallConfirm(false);
+    }
+  }, [onUninstall, font.family]);
+
   // Typography state – live (controls slider display)
   const [typography, setTypography] = useState({
     fontSize: 72,
@@ -373,7 +417,7 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
   const fontFaceStyle = `
     @font-face {
       font-family: '${fontId}';
-      src: url('file://${currentFont.file_path.replace(/\\/g, "/")}');
+      src: url('${toFontUrl(currentFont.file_path)}');
       font-display: swap;
     }
   `;
@@ -489,7 +533,15 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                 <span className="text-muted-foreground font-mono text-xs tracking-widest uppercase">
                   Selected Family
                 </span>
-                <h1 className="mb-8 text-3xl font-semibold">{font.family}</h1>
+                <div className="mb-8 flex items-center gap-3">
+                  <h1 className="text-3xl font-semibold">{font.family}</h1>
+                  {isOsInstalled && (
+                    <span className="inline-flex items-center gap-1 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-emerald-500 uppercase">
+                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      Installed
+                    </span>
+                  )}
+                </div>
               </div>
               <div
                 className="text-foreground focus:border-muted-foreground min-h-[1.2em] text-[120px] leading-tight wrap-break-word outline-none focus:border-b focus:border-dashed"
@@ -978,7 +1030,7 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                   <style key={v.id}>{`
                      @font-face {
                        font-family: 'font-detail-${v.id}';
-                       src: url('file://${v.file_path.replace(/\\/g, "/")}');
+                       src: url('${toFontUrl(v.file_path)}');
                        font-display: swap;
                      }
                    `}</style>
@@ -1134,7 +1186,7 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
             </div>
 
             {/* Actions */}
-            <div className="mt-auto border-t pt-6">
+            <div className="mt-auto space-y-2 border-t pt-6">
               <Button
                 variant="outline"
                 className="w-full gap-2"
@@ -1147,6 +1199,50 @@ export function FontDetailView({ font, onBack }: FontDetailViewProps) {
                 <FolderOpen className="h-4 w-4" />
                 Reveal in Folder
               </Button>
+
+              {isImportedFont && onUninstall && !showUninstallConfirm && (
+                <Button
+                  variant="outline"
+                  className="w-full gap-2 border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  onClick={() => setShowUninstallConfirm(true)}
+                >
+                  <Trash2 className="h-4 w-4" />
+                  Uninstall Font
+                </Button>
+              )}
+
+              {showUninstallConfirm && (
+                <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-3 space-y-3">
+                  <p className="text-xs text-destructive font-medium">
+                    Remove &ldquo;{font.family}&rdquo; and all its variants?
+                    {isOsInstalled && " It will also be unregistered from Windows."}{" "}
+                    This cannot be undone.
+                  </p>
+                  {uninstallError && (
+                    <p className="text-xs text-destructive opacity-80">{uninstallError}</p>
+                  )}
+                  <div className="flex gap-2">
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      className="flex-1 gap-1.5 text-xs"
+                      disabled={isUninstalling}
+                      onClick={handleUninstall}
+                    >
+                      {isUninstalling ? "Removing…" : "Remove"}
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="flex-1 text-xs"
+                      disabled={isUninstalling}
+                      onClick={() => { setShowUninstallConfirm(false); setUninstallError(null); }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </aside>

@@ -40,8 +40,13 @@ export const FontCard = memo(
 
     const previewPath = font.preview_file_path || font.file_path;
     const fontFaceStyle = useMemo(() => {
-      // Escaping backslashes for Windows paths; prefer Regular variant for preview
-      const url = `file://${previewPath.replace(/\\/g, "/")}`;
+      // Use font:// scheme so Electron serves with the correct Content-Type,
+      // avoiding Chromium OTS parse errors on legacy cmap subtables.
+      // "local" is a dummy host so Windows drive letters (C:) aren't eaten
+      // by URL parsing as the authority component.
+      const forward = previewPath.replace(/\\/g, "/");
+      const encoded = forward.split("/").map(encodeURIComponent).join("/");
+      const url = `font://local/${encoded}`;
       return (
         <style key={fontId}>
           {`

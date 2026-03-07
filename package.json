@@ -1,7 +1,7 @@
 {
   "name": "evergarden-font-manager",
   "private": true,
-  "version": "0.1.0-beta.3",
+  "version": "0.1.0-beta.",
   "main": "dist-electron/main.js",
   "license": "MIT",
   "scripts": {
@@ -84,6 +84,12 @@
       "dist/**/*",
       "dist-electron/**/*",
       "package.json"
+    ],
+    "extraResources": [
+      {
+        "from": "build/icons/icon.ico",
+        "to": "icon.ico"
+      }
     ],
     "asar": true,
     "asarUnpack": [
