@@ -168,9 +168,9 @@ function MarqueeOnHover({
   const outerRef = useRef<HTMLSpanElement>(null);
   const innerRef = useRef<HTMLSpanElement>(null);
   const rafRef = useRef<number | null>(null);
-  const posRef = useRef(0);           // current translateX in px (≤ 0)
+  const posRef = useRef(0); // current translateX in px (≤ 0)
   const dirRef = useRef<"fwd" | "back">("fwd");
-  const pauseRef = useRef(0);           // remaining pause frames
+  const pauseRef = useRef(0); // remaining pause frames
 
   /* ── stable helpers (only use refs, never stale) ─────────────────── */
   const cancel = useCallback(() => {
@@ -186,7 +186,7 @@ function MarqueeOnHover({
   }, []);
 
   /* ── forward tick ─────────────────────────────────────────────────── */
-  const tick = useCallback(() => {
+  function tick() {
     const outer = outerRef.current;
     const inner = innerRef.current;
     if (!outer || !inner) return;
@@ -213,27 +213,27 @@ function MarqueeOnHover({
     }
 
     rafRef.current = requestAnimationFrame(tick);
-  }, [setPos]);
+  }
 
   /* ── snap-back on leave ───────────────────────────────────────────── */
-  const snapBack = useCallback(() => {
+  function snapBack() {
     if (!innerRef.current) return;
     if (posRef.current >= 0) { setPos(0); rafRef.current = null; return; }
     setPos(Math.min(posRef.current + MARQUEE_SPEED * 2.5, 0));
     rafRef.current = requestAnimationFrame(snapBack);
-  }, [setPos]);
+  }
 
-  const handleMouseEnter = useCallback(() => {
+  const handleMouseEnter = () => {
     cancel();
     dirRef.current = "fwd";
     pauseRef.current = 0;
     rafRef.current = requestAnimationFrame(tick);
-  }, [cancel, tick]);
+  };
 
-  const handleMouseLeave = useCallback(() => {
+  const handleMouseLeave = () => {
     cancel();
     rafRef.current = requestAnimationFrame(snapBack);
-  }, [cancel, snapBack]);
+  };
 
   useEffect(() => () => cancel(), [cancel]);
 
@@ -572,7 +572,6 @@ export function FontDetailView({ font, onBack, onUninstall }: FontDetailViewProp
               "mx-auto max-w-5xl space-y-20 p-12",
               activeTab !== "specimen" && "hidden"
             )}
-            aria-hidden={activeTab !== "specimen"}
           >
             {/* Headlines */}
             <div>
@@ -654,7 +653,6 @@ export function FontDetailView({ font, onBack, onUninstall }: FontDetailViewProp
                 "mx-auto max-w-5xl p-12",
                 activeTab !== "glyphs" && "hidden"
               )}
-              aria-hidden={activeTab !== "glyphs"}
             >
               <div className="text-muted-foreground mb-4 flex items-center justify-between text-sm">
                 <span>
@@ -702,7 +700,6 @@ export function FontDetailView({ font, onBack, onUninstall }: FontDetailViewProp
                 "mx-auto max-w-5xl space-y-12 p-12",
                 activeTab !== "ligatures" && "hidden"
               )}
-              aria-hidden={activeTab !== "ligatures"}
             >
               <div className="prose dark:prose-invert max-w-none">
                 <h2 className="mb-4 text-2xl font-semibold">Ligatures</h2>
@@ -757,7 +754,6 @@ export function FontDetailView({ font, onBack, onUninstall }: FontDetailViewProp
                 "mx-auto max-w-5xl space-y-10 p-12",
                 activeTab !== "ot" && "hidden"
               )}
-              aria-hidden={activeTab !== "ot"}
             >
               <div className="border-b pb-8">
                 <h2 className="mb-2 text-2xl font-semibold">
@@ -836,7 +832,6 @@ export function FontDetailView({ font, onBack, onUninstall }: FontDetailViewProp
                 "mx-auto max-w-5xl p-8",
                 activeTab !== "waterfall" && "hidden"
               )}
-              aria-hidden={activeTab !== "waterfall"}
             >
               <div className="space-y-8 overflow-hidden">
                 {[96, 72, 60, 48, 36, 24, 18, 14, 12].map((size) => (
@@ -864,7 +859,6 @@ export function FontDetailView({ font, onBack, onUninstall }: FontDetailViewProp
                 "mx-auto max-w-5xl p-12",
                 activeTab !== "info" && "hidden"
               )}
-              aria-hidden={activeTab !== "info"}
             >
               <div className="space-y-8">
                 <div>
