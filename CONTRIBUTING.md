@@ -88,10 +88,12 @@ git push -u origin feat/<short-description>
 
 2. Open a PR from your fork branch to `main`.
 3. In the PR description include:
+
 - What changed
 - Why it changed
 - How you tested it
 - Screenshots/video for UI changes
+
 4. Link related issues, if any.
 
 ## Keep Your Fork Updated
