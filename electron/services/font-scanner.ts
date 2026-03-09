@@ -107,14 +107,11 @@ export async function processFontFile(
 ): Promise<FontMetadata | null> {
   const ext = path.extname(filePath).toLowerCase();
   if (!FONT_EXTENSIONS.has(ext)) {
-    console.log(`[scanner] skipped (unsupported ext "${ext}"): ${filePath}`);
     return null;
   }
 
   try {
-    console.log(`[scanner] processing: ${filePath}`);
     const hash = await getFileHash(filePath);
-    console.log(`[scanner] hash: ${hash.slice(0, 8)}...`);
     const font = fontkit.openSync(filePath);
     let fontObj: any = font;
     if ("fonts" in font) {
@@ -216,9 +213,7 @@ export async function processFontFile(
       last_seen: Math.floor(Date.now() / 1000),
     };
 
-    console.log(`[scanner] saving to DB: family="${familyName}" subfamily="${subfamilyName}" path="${filePath}"`);
     saveFont(metadata);
-    console.log(`[scanner] saved OK: ${familyName}`);
     return metadata;
   } catch (e: any) {
     if (e.message === "Unknown font format") {

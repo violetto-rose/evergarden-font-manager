@@ -28,8 +28,5 @@ export type FontMetadataBridge = Record<string, FontMetadataEntry>;
 
 /** Normalize a font family name for bridge lookup (lowercase, trim, collapse spaces). */
 export function normalizeFamilyKey(family: string): string {
-  return family
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, " ");
+  return family.toLowerCase().trim().replace(/\s+/g, " ");
 }

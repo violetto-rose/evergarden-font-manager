@@ -1,8 +1,16 @@
-import { useState, useEffect, useCallback, useMemo, useDeferredValue, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useDeferredValue,
+  useRef,
+} from "react";
 import { Header } from "./components/Header";
 import { Sidebar } from "./components/Sidebar";
 import { FontGrid } from "./components/FontGrid";
 import { FontDetailView } from "./components/FontDetailView";
+import { FontPairingView } from "./components/FontPairingView";
 
 declare global {
   interface Window {
@@ -10,7 +18,12 @@ declare global {
       // Drop import callbacks — registered once on mount
       onDropPaths: (cb: (paths: string[]) => void) => void;
       onImportProgress: (cb: (processed: number) => void) => void;
-      onImportDone: (cb: (result: { imported: number; failed: number; errors: string[] }, fonts: any[]) => void) => void;
+      onImportDone: (
+        cb: (
+          result: { imported: number; failed: number; errors: string[] },
+          fonts: any[]
+        ) => void
+      ) => void;
       // IPC
       scanFonts: () => Promise<any[]>;
       getFonts: () => Promise<any[]>;
@@ -18,6 +31,7 @@ declare global {
       getFontVariants: (family: string) => Promise<any[]>;
       revealInFolder: (filePath: string) => Promise<void>;
       getRecentFonts: () => Promise<any[]>;
+      getAppVersion: () => Promise<string>;
       importDroppedFonts: (paths: string[]) => Promise<{
         imported: number;
         failed: number;
@@ -26,7 +40,9 @@ declare global {
       onScanProgress: (callback: (count: number) => void) => void;
       removeScanProgressListener: () => void;
       removeImportProgressListener: () => void;
-      uninstallFont: (family: string) => Promise<{ success: boolean; error?: string }>;
+      uninstallFont: (
+        family: string
+      ) => Promise<{ success: boolean; error?: string }>;
       versions: {
         electron: string;
         chrome: string;
@@ -109,7 +125,6 @@ function App() {
     };
   }, []);
 
-
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
@@ -166,7 +181,9 @@ function App() {
       } else if (result.failed > 0 && result.errors.length > 0) {
         setImportMessage(result.errors[0] || "Import failed.");
       } else {
-        setImportMessage("No font files recognised. Use .ttf, .otf, .woff, or .woff2.");
+        setImportMessage(
+          "No font files recognised. Use .ttf, .otf, .woff, or .woff2."
+        );
       }
       setTimeout(() => setImportMessage(null), 4000);
     });
@@ -179,10 +196,37 @@ function App() {
     e.stopPropagation();
     dragCounterRef.current = 0;
     setIsDragOver(false);
-    console.log("[app:handleDrop] fired, files:", e.dataTransfer?.files?.length ?? 0);
+    console.log(
+      "[app:handleDrop] fired, files:",
+      e.dataTransfer?.files?.length ?? 0
+    );
   }, []);
 
   const [rebuildDoneAt, setRebuildDoneAt] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (rebuildDoneAt == null) return;
+
+    const timeoutId = window.setTimeout(() => {
+      setRebuildDoneAt(null);
+    }, 2500);
+
+    return () => window.clearTimeout(timeoutId);
+  }, [rebuildDoneAt]);
+
+  const [nowSeconds, setNowSeconds] = useState(() =>
+    Math.floor(Date.now() / 1000)
+  );
+
+  useEffect(() => {
+    const intervalId = window.setInterval(() => {
+      setNowSeconds(Math.floor(Date.now() / 1000));
+    }, 60_000);
+
+    return () => window.clearInterval(intervalId);
+  }, []);
+
+  const recentCutoff = nowSeconds - 30 * 86400;
 
   const handleScan = async () => {
     setLoading(true);
@@ -213,20 +257,18 @@ function App() {
 
         const matchesView =
           selectedView === "all" ||
+          selectedView === "pairing" ||
           (selectedView === "favorites" && font.is_favorite === 1) ||
-          (selectedView === "recently-added" &&
-            font.last_seen >= Math.floor(Date.now() / 1000) - 30 * 86400);
+          (selectedView === "recently-added" && font.last_seen >= recentCutoff);
 
         return (
-          matchesSearch &&
-          matchesCategory &&
-          matchesSubcategory &&
-          matchesView
+          matchesSearch && matchesCategory && matchesSubcategory && matchesView
         );
       }),
     [
       fonts,
       deferredSearchQuery,
+      recentCutoff,
       selectedCategory,
       selectedSubcategory,
       selectedView,
@@ -238,9 +280,7 @@ function App() {
     selectedView === "favorites"
       ? fonts.filter((f) => f.is_favorite === 1)
       : selectedView === "recently-added"
-        ? fonts.filter(
-          (f) => f.last_seen >= Math.floor(Date.now() / 1000) - 30 * 86400
-        )
+        ? fonts.filter((f) => f.last_seen >= recentCutoff)
         : fonts;
   const categoryCounts = fontsInView.reduce<Record<string, number>>(
     (acc, font) => {
@@ -278,7 +318,7 @@ function App() {
 
   return (
     <div
-      className="bg-background text-foreground flex h-screen w-full overflow-hidden font-sans relative"
+      className="bg-background text-foreground relative flex h-screen w-full overflow-hidden font-sans"
       onDragEnter={handleDragEnter}
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
@@ -286,8 +326,8 @@ function App() {
     >
       {/* Full-window drag/import overlay — covers sidebar + main, blocks all clicks */}
       {(isDragOver || isImporting) && (
-        <div className="fixed inset-0 z-100 flex items-center justify-center border-2 border-dashed border-primary/60 bg-primary/5 backdrop-blur-sm">
-          <div className="flex flex-col items-center gap-3 rounded-xl bg-background/90 px-8 py-6 shadow-lg">
+        <div className="border-primary/60 bg-primary/5 fixed inset-0 z-100 flex items-center justify-center border-2 border-dashed backdrop-blur-sm">
+          <div className="bg-background/90 flex flex-col items-center gap-3 rounded-xl px-8 py-6 shadow-lg">
             <p className="text-foreground text-sm font-medium">
               {isImporting
                 ? `Importing… ${importProgress} file(s) processed`
@@ -310,7 +350,7 @@ function App() {
         subcategoryCounts={subcategoryCounts}
       />
 
-      <div className="bg-secondary/30 dark:bg-background relative flex min-w-0 min-h-0 flex-1 flex-col overflow-hidden">
+      <div className="bg-secondary/30 dark:bg-background relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
         <Header
           onScan={handleScan}
           isScanning={loading}
@@ -325,17 +365,21 @@ function App() {
           onToggleTheme={toggleTheme}
         />
 
-        <main className="relative flex min-w-0 flex-1 flex-col overflow-hidden min-h-0">
-          <FontGrid
-            key={`cat-${selectedCategory ?? "all"}-sub-${selectedSubcategory ?? "all"}`}
-            fonts={filteredFonts}
-            selectedId={selectedFont}
-            onSelect={handleSelectFont}
-            fontSize={fontSize}
-            previewText={previewText}
-            onFontsChange={loadFonts}
-            features={{}}
-          />
+        <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+          {selectedView === "pairing" ? (
+            <FontPairingView fonts={fonts} />
+          ) : (
+            <FontGrid
+              key={`cat-${selectedCategory ?? "all"}-sub-${selectedSubcategory ?? "all"}`}
+              fonts={filteredFonts}
+              selectedId={selectedFont}
+              onSelect={handleSelectFont}
+              fontSize={fontSize}
+              previewText={previewText}
+              onFontsChange={loadFonts}
+              features={{}}
+            />
+          )}
 
           {loading && (
             <div className="bg-background/50 absolute inset-0 z-50 flex items-center justify-center backdrop-blur-sm">
@@ -347,7 +391,7 @@ function App() {
           )}
 
           {importMessage && (
-            <div className="absolute bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground shadow-lg">
+            <div className="bg-primary text-primary-foreground absolute bottom-20 left-1/2 z-50 -translate-x-1/2 rounded-lg px-4 py-2 text-sm font-medium shadow-lg">
               {importMessage}
             </div>
           )}

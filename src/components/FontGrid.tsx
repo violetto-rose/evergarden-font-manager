@@ -21,8 +21,6 @@ interface FontGridProps {
   onFontsChange?: () => void;
 }
 
-
-
 function makeItemData(
   fonts: Font[],
   selectedId: number | null,
@@ -103,7 +101,7 @@ export function FontGrid({
   }
 
   return (
-    <div className="flex-1 min-h-0 min-w-0 h-full w-full">
+    <div className="h-full min-h-0 w-full min-w-0 flex-1">
       <AutoSizer
         renderProp={({ height, width }) => {
           if (!height || !width) return <span />;

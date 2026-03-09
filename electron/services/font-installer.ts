@@ -14,13 +14,6 @@ import path from "path";
 import os from "os";
 import { spawn } from "child_process";
 
-const execFileAsync = promisify(execFile);
-
-const HKLM_KEY =
-  "HKLM\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts";
-const HKCU_KEY =
-  "HKCU\\SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion\\Fonts";
-
 export function getWindowsFontsDir(): string {
   const winDir = process.env.SystemRoot || "C:\\Windows";
   return path.join(winDir, "Fonts");
@@ -29,8 +22,7 @@ export function getWindowsFontsDir(): string {
 /** Returns %LOCALAPPDATA%\Microsoft\Windows\Fonts (per-user fallback) */
 export function getWindowsUserFontsDir(): string {
   const localAppData =
-    process.env.LOCALAPPDATA ||
-    path.join(os.homedir(), "AppData", "Local");
+    process.env.LOCALAPPDATA || path.join(os.homedir(), "AppData", "Local");
   return path.join(localAppData, "Microsoft", "Windows", "Fonts");
 }
 
@@ -133,12 +125,14 @@ function runElevatedPowerShell(script: string): Promise<void> {
   return new Promise((resolve, reject) => {
     const tmp = os.tmpdir();
     const id = Date.now().toString(36);
-    const ps1File  = path.join(tmp, `efm-${id}.ps1`);
+    const ps1File = path.join(tmp, `efm-${id}.ps1`);
     const doneFile = path.join(tmp, `efm-${id}.done`);
-    const vbsFile  = path.join(tmp, `efm-${id}.vbs`);
+    const vbsFile = path.join(tmp, `efm-${id}.vbs`);
 
     // Append sentinel write so we know when the elevated process finishes
-    const fullScript = script + `\nSet-Content -Path '${doneFile.replace(/'/g, "''")}' -Value 'done'`;
+    const fullScript =
+      script +
+      `\nSet-Content -Path '${doneFile.replace(/'/g, "''")}' -Value 'done'`;
     fs.writeFileSync(ps1File, fullScript, "utf8");
 
     // VBS: silently invoke PowerShell elevated via ShellExecute runas verb
@@ -181,7 +175,11 @@ sh.ShellExecute "powershell.exe", _
 
     function cleanup() {
       for (const f of [ps1File, doneFile, vbsFile]) {
-        try { fs.unlinkSync(f); } catch { /* ignore */ }
+        try {
+          fs.unlinkSync(f);
+        } catch {
+          /* ignore */
+        }
       }
     }
   });

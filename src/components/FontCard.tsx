@@ -1,6 +1,6 @@
 import { memo, useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
-import { Heart } from "lucide-react";
+import { ManagedIcon } from "@/components/ui/managed-icon";
 
 interface Font {
   id: number;
@@ -95,7 +95,9 @@ export const FontCard = memo(
               }}
               className="-m-1 p-1"
             >
-              <Heart
+              <ManagedIcon
+                name="Heart"
+                filled={isFavorite}
                 className={cn(
                   "h-5 w-5",
                   isFavorite

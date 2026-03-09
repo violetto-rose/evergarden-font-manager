@@ -16,10 +16,7 @@ import {
   generateBridgeFromDatabase,
 } from "./services/font-metadata-bridge";
 import { preloadOnlineMetadata } from "./services/online-font-metadata";
-import {
-  importFontFiles,
-  type ImportResult,
-} from "./services/font-importer";
+import { importFontFiles, type ImportResult } from "./services/font-importer";
 import { getImportedFontsDirectory } from "./services/font-scanner";
 import {
   uninstallFontFromOS,
@@ -69,8 +66,8 @@ const createWindow = () => {
       preload: path.join(__dirname, "preload.js"),
       nodeIntegration: false,
       contextIsolation: true,
-      sandbox: false,      // required: sandbox strips File.path from drop events
-      webSecurity: false,  // required: allows font:// and file:// from renderer
+      sandbox: false, // required: sandbox strips File.path from drop events
+      webSecurity: false, // required: allows font:// and file:// from renderer
     },
     titleBarStyle: "hidden",
     titleBarOverlay: {
@@ -118,12 +115,15 @@ app.whenReady().then(async () => {
     // URL format: font://local/<path>  e.g. font://local/C:/Windows/Fonts/arial.ttf
     // Strip "font://local/" and decode each percent-encoded segment.
     const withoutPrefix = request.url.slice("font://local/".length);
-    const filePath = withoutPrefix.split("/").map(decodeURIComponent).join(path.sep);
+    const filePath = withoutPrefix
+      .split("/")
+      .map(decodeURIComponent)
+      .join(path.sep);
     const ext = path.extname(filePath).toLowerCase();
     const mimeTypes: Record<string, string> = {
-      ".ttf":   "font/ttf",
-      ".otf":   "font/otf",
-      ".woff":  "font/woff",
+      ".ttf": "font/ttf",
+      ".otf": "font/otf",
+      ".woff": "font/woff",
       ".woff2": "font/woff2",
     };
     const contentType = mimeTypes[ext] ?? "application/octet-stream";
@@ -203,6 +203,10 @@ ipcMain.handle("get-recent-fonts", () => {
   return getRecentFonts();
 });
 
+ipcMain.handle("get-app-version", () => {
+  return app.getVersion();
+});
+
 ipcMain.handle(
   "import-dropped-fonts",
   async (event, sourcePaths: string[]): Promise<ImportResult> => {
@@ -219,7 +223,10 @@ ipcMain.handle(
 
 ipcMain.handle(
   "uninstall-font",
-  async (_event, family: string): Promise<{ success: boolean; error?: string }> => {
+  async (
+    _event,
+    family: string
+  ): Promise<{ success: boolean; error?: string }> => {
     try {
       const importedDir = getImportedFontsDirectory();
       const variants = getFontVariants(family) as Array<{
@@ -238,7 +245,8 @@ ipcMain.handle(
         const norm = path.normalize(v.file_path);
         const inImported = norm.startsWith(path.normalize(importedDir));
         const inWinFonts =
-          os.platform() === "win32" && isInstalledInWindowsFontsDir(v.file_path);
+          os.platform() === "win32" &&
+          isInstalledInWindowsFontsDir(v.file_path);
         if (!inImported && !inWinFonts) {
           return {
             success: false,
@@ -258,13 +266,14 @@ ipcMain.handle(
         }
 
         // 2. Delete the staged copy in ImportedFonts if it still exists
-        const stagedPath = path.join(
-          importedDir,
-          path.basename(v.file_path)
-        );
+        const stagedPath = path.join(importedDir, path.basename(v.file_path));
         for (const p of [v.file_path, stagedPath]) {
           if (fs.existsSync(p)) {
-            try { fs.unlinkSync(p); } catch { /* already gone */ }
+            try {
+              fs.unlinkSync(p);
+            } catch {
+              /* already gone */
+            }
           }
         }
 
@@ -279,4 +288,3 @@ ipcMain.handle(
     }
   }
 );
-

@@ -16,7 +16,14 @@ export function categorizeFontFamily(
   const combined = `${family} ${sub}`;
 
   // --- Script ---
-  const scriptCalligraphy = ["calligraph", "copperplate", "spencerian", "formal script", "flourish", "swash"];
+  const scriptCalligraphy = [
+    "calligraph",
+    "copperplate",
+    "spencerian",
+    "formal script",
+    "flourish",
+    "swash",
+  ];
   if (hasAny(combined, scriptCalligraphy)) {
     return { category: "Script", subcategory: "Calligraphy" };
   }
@@ -24,7 +31,15 @@ export function categorizeFontFamily(
   if (hasAny(combined, scriptSchool)) {
     return { category: "Script", subcategory: "School" };
   }
-  const scriptHandwritten = ["handwriting", "hand written", "handwritten", "casual", "freestyle", "lucida handwriting", "segoe script"];
+  const scriptHandwritten = [
+    "handwriting",
+    "hand written",
+    "handwritten",
+    "casual",
+    "freestyle",
+    "lucida handwriting",
+    "segoe script",
+  ];
   if (hasAny(combined, scriptHandwritten)) {
     return { category: "Script", subcategory: "Handwritten" };
   }
@@ -40,7 +55,16 @@ export function categorizeFontFamily(
   if (hasAny(combined, scriptGraffiti)) {
     return { category: "Script", subcategory: "Graffiti" };
   }
-  if (hasAny(combined, ["snell roundhand", "viner", "mistral", "bickham", "signature", "old school script"])) {
+  if (
+    hasAny(combined, [
+      "snell roundhand",
+      "viner",
+      "mistral",
+      "bickham",
+      "signature",
+      "old school script",
+    ])
+  ) {
     return { category: "Script", subcategory: "Old School" };
   }
   if (hasAny(combined, ["script", "cursive"])) {
@@ -48,11 +72,30 @@ export function categorizeFontFamily(
   }
 
   // --- Gothic (blackletter, medieval, celtic) ---
-  const gothicMedieval = ["blackletter", "black letter", "fraktur", "textura", "uncial", "old english", "schwabacher", "rotunda", "lombardic", "gotisch", "gothic type", "medieval"];
+  const gothicMedieval = [
+    "blackletter",
+    "black letter",
+    "fraktur",
+    "textura",
+    "uncial",
+    "old english",
+    "schwabacher",
+    "rotunda",
+    "lombardic",
+    "gotisch",
+    "gothic type",
+    "medieval",
+  ];
   if (hasAny(combined, gothicMedieval)) {
     return { category: "Gothic", subcategory: "Medieval" };
   }
-  const gothicModern = ["gothic", "grotesque", "franklin", "trade gothic", "alternate gothic"];
+  const gothicModern = [
+    "gothic",
+    "grotesque",
+    "franklin",
+    "trade gothic",
+    "alternate gothic",
+  ];
   if (hasAny(combined, gothicModern) && !hasAny(combined, ["sans", "serif"])) {
     return { category: "Gothic", subcategory: "Modern" };
   }
@@ -60,7 +103,10 @@ export function categorizeFontFamily(
   if (hasAny(combined, gothicCeltic)) {
     return { category: "Gothic", subcategory: "Celtic" };
   }
-  if (hasAny(combined, ["initials", "initial caps"]) && hasAny(combined, ["gothic", "blackletter", "ornament"])) {
+  if (
+    hasAny(combined, ["initials", "initial caps"]) &&
+    hasAny(combined, ["gothic", "blackletter", "ornament"])
+  ) {
     return { category: "Gothic", subcategory: "Initials" };
   }
 
@@ -84,7 +130,10 @@ export function categorizeFontFamily(
     "mini",
   ];
   if (hasAny(combined, technoPixelBitmap)) {
-    return { category: "Techno", subcategory: hasAny(combined, ["pixel"]) ? "Pixel" : "Bitmap" };
+    return {
+      category: "Techno",
+      subcategory: hasAny(combined, ["pixel"]) ? "Pixel" : "Bitmap",
+    };
   }
   const technoLcd = ["lcd", "led", "digital", "liquid crystal"];
   if (hasAny(combined, technoLcd)) {
@@ -116,14 +165,35 @@ export function categorizeFontFamily(
     "press",
   ];
   if (monospace === 1 && hasAny(combined, monospacePixelHints)) {
-    return { category: "Techno", subcategory: hasAny(combined, ["pixel"]) ? "Pixel" : "Bitmap" };
+    return {
+      category: "Techno",
+      subcategory: hasAny(combined, ["pixel"]) ? "Pixel" : "Bitmap",
+    };
   }
-  if (monospace === 1 || hasAny(combined, ["mono", "code", "console", "terminal", "programming", "fixed width"])) {
+  if (
+    monospace === 1 ||
+    hasAny(combined, [
+      "mono",
+      "code",
+      "console",
+      "terminal",
+      "programming",
+      "fixed width",
+    ])
+  ) {
     return { category: "Basic", subcategory: "Fixed width" };
   }
 
   // --- Foreign look ---
-  const foreignChineseJpn = ["chinese", "japanese", "jpn", "kanji", "hanzi", "cjk", "asian"];
+  const foreignChineseJpn = [
+    "chinese",
+    "japanese",
+    "jpn",
+    "kanji",
+    "hanzi",
+    "cjk",
+    "asian",
+  ];
   if (hasAny(combined, foreignChineseJpn)) {
     return { category: "Foreign look", subcategory: "Chinese, Jpn" };
   }
@@ -131,11 +201,24 @@ export function categorizeFontFamily(
   if (hasAny(combined, foreignArabic)) {
     return { category: "Foreign look", subcategory: "Arabic" };
   }
-  const foreignMexican = ["mexican", "latin american", "aztec", "mayan", "fiesta"];
+  const foreignMexican = [
+    "mexican",
+    "latin american",
+    "aztec",
+    "mayan",
+    "fiesta",
+  ];
   if (hasAny(combined, foreignMexican)) {
     return { category: "Foreign look", subcategory: "Mexican" };
   }
-  const foreignRomanGreek = ["roman", "greek", "latin", "trojan", "spartan", "athens"];
+  const foreignRomanGreek = [
+    "roman",
+    "greek",
+    "latin",
+    "trojan",
+    "spartan",
+    "athens",
+  ];
   if (hasAny(combined, foreignRomanGreek)) {
     return { category: "Foreign look", subcategory: "Roman, Greek" };
   }
@@ -155,7 +238,10 @@ export function categorizeFontFamily(
   if (hasAny(combined, ["groovy", "psychedelic", "hippie", "70s"])) {
     return { category: "Fancy", subcategory: "Groovy" };
   }
-  if (hasAny(combined, ["old school", "oldschool", "vintage", "retro"]) && !hasAny(combined, ["script"])) {
+  if (
+    hasAny(combined, ["old school", "oldschool", "vintage", "retro"]) &&
+    !hasAny(combined, ["script"])
+  ) {
     return { category: "Fancy", subcategory: "Old School" };
   }
   if (hasAny(combined, ["curly", "swirly", "ornate", "flourish"])) {
@@ -179,7 +265,20 @@ export function categorizeFontFamily(
   if (hasAny(combined, ["fire", "ice", "flame", "frost"])) {
     return { category: "Fancy", subcategory: "Fire, Ice" };
   }
-  if (hasAny(combined, ["decorative", "ornament", "poster", "fatface", "inline", "outline", "shadow", "banner", "impact", "woodblock"])) {
+  if (
+    hasAny(combined, [
+      "decorative",
+      "ornament",
+      "poster",
+      "fatface",
+      "inline",
+      "outline",
+      "shadow",
+      "banner",
+      "impact",
+      "woodblock",
+    ])
+  ) {
     return { category: "Fancy", subcategory: "Decorative" };
   }
   if (hasAny(combined, ["typewriter", "typer", "ribbon"])) {
@@ -194,7 +293,10 @@ export function categorizeFontFamily(
   if (hasAny(combined, ["initials", "initial caps", "drop cap"])) {
     return { category: "Fancy", subcategory: "Initials" };
   }
-  if (hasAny(combined, ["grid", "modular", "geometric"]) && hasAny(combined, ["display", "decorative"])) {
+  if (
+    hasAny(combined, ["grid", "modular", "geometric"]) &&
+    hasAny(combined, ["display", "decorative"])
+  ) {
     return { category: "Fancy", subcategory: "Grid" };
   }
 
@@ -225,7 +327,10 @@ export function categorizeFontFamily(
   ) {
     return { category: "Basic", subcategory: "Sans serif" };
   }
-  if (hasAny(combined, ["mono", "code", "fixed", "console"]) || monospace === 1) {
+  if (
+    hasAny(combined, ["mono", "code", "fixed", "console"]) ||
+    monospace === 1
+  ) {
     return { category: "Basic", subcategory: "Fixed width" };
   }
 

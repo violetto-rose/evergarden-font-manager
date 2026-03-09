@@ -1,0 +1,6 @@
+build
+dist
+dist-electron
+evergarden-website/dist
+node_modules
+release

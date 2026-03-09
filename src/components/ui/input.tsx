@@ -1,6 +1,6 @@
-import * as React from "react"
+import * as React from "react";
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/lib/utils";
 
 const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
   ({ className, type, ...props }, ref) => {
@@ -8,15 +8,15 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
       <input
         type={type}
         className={cn(
-          "w-full bg-transparent text-sm placeholder:text-muted-foreground focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
+          "placeholder:text-muted-foreground w-full bg-transparent text-sm focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-50",
           className
         )}
         ref={ref}
         {...props}
       />
-    )
+    );
   }
-)
-Input.displayName = "Input"
+);
+Input.displayName = "Input";
 
-export { Input }
+export { Input };

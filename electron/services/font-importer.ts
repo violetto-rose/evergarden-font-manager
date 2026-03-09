@@ -27,7 +27,10 @@ function ensureDir(dir: string): void {
 }
 
 function fileHash(filePath: string): string {
-  return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
+  return crypto
+    .createHash("sha256")
+    .update(fs.readFileSync(filePath))
+    .digest("hex");
 }
 
 /**
@@ -77,7 +80,9 @@ export async function importFontFiles(
   const result: ImportResult = { imported: 0, failed: 0, errors: [] };
   const paths = sourcePaths.filter(isFontFile);
 
-  console.log(`[importer] total: ${sourcePaths.length}, valid: ${paths.length}`);
+  console.log(
+    `[importer] total: ${sourcePaths.length}, valid: ${paths.length}`
+  );
 
   for (let i = 0; i < paths.length; i++) {
     const src = paths[i];
@@ -105,15 +110,23 @@ export async function importFontFiles(
 
       // Install to OS (Windows per-user fonts dir + registry)
       if (os.platform() === "win32") {
-        console.log(`[importer] installing to OS: ${meta.family} ${meta.subfamily}`);
+        console.log(
+          `[importer] installing to OS: ${meta.family} ${meta.subfamily}`
+        );
         try {
-          const installedPath = await installFontToOS(stagedPath, meta.family, meta.subfamily);
+          const installedPath = await installFontToOS(
+            stagedPath,
+            meta.family,
+            meta.subfamily
+          );
           console.log(`[importer] OS installed: ${installedPath}`);
           markImporting(installedPath);
           setOsInstalled(stagedPath, true);
           setTimeout(() => unmarkImporting(installedPath), 3000);
         } catch (e: any) {
-          console.warn(`[importer] OS install failed (non-fatal): ${e?.message}`);
+          console.warn(
+            `[importer] OS install failed (non-fatal): ${e?.message}`
+          );
         }
       }
 
@@ -127,6 +140,8 @@ export async function importFontFiles(
     onProgress?.(i + 1);
   }
 
-  console.log(`[importer] done. imported=${result.imported} failed=${result.failed}`);
+  console.log(
+    `[importer] done. imported=${result.imported} failed=${result.failed}`
+  );
   return result;
 }
