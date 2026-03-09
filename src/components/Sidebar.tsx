@@ -2,8 +2,8 @@ import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import logo from "../../assets/logo.svg";
 import logoDark from "../../assets/logo-dark.svg";
-import { Grid, Clock, Heart, ChevronDown, ChevronRight } from "lucide-react";
 import { FONT_CATEGORIES } from "@/lib/font-categories";
+import { ManagedIcon } from "@/components/ui/managed-icon";
 
 interface SidebarProps {
   selectedCategory: string | null;
@@ -35,8 +35,16 @@ export function Sidebar({
     <aside className="bg-background hidden h-full w-64 flex-col border-r md:flex">
       <div className="flex min-h-0 flex-1 flex-col p-6">
         <div className="mb-6 flex shrink-0 items-center">
-          <img src={logo} alt="Evergarden" className="h-12 w-auto dark:hidden" />
-          <img src={logoDark} alt="Evergarden" className="h-12 w-auto hidden dark:block" />
+          <img
+            src={logo}
+            alt="Evergarden"
+            className="h-12 w-auto dark:hidden"
+          />
+          <img
+            src={logoDark}
+            alt="Evergarden"
+            className="hidden h-12 w-auto dark:block"
+          />
         </div>
 
         <nav className="flex min-h-0 flex-1 flex-col gap-6 overflow-hidden">
@@ -59,13 +67,19 @@ export function Sidebar({
                     onFilterSelect(null, null);
                   }}
                 >
-                  <Grid className="h-4 w-4" />
+                  <ManagedIcon
+                    name="Grid"
+                    filled={selectedView === "all" && selectedCategory === null}
+                    className="h-4 w-4"
+                  />
                   All Typefaces
                 </Button>
               </li>
               <li>
                 <Button
-                  variant={selectedView === "recently-added" ? "secondary" : "ghost"}
+                  variant={
+                    selectedView === "recently-added" ? "secondary" : "ghost"
+                  }
                   className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-9 w-full justify-start gap-3 px-3 font-medium"
                   onClick={() => {
                     setExpandedCategory(null);
@@ -73,7 +87,11 @@ export function Sidebar({
                     onFilterSelect(null, null);
                   }}
                 >
-                  <Clock className="h-4 w-4" />
+                  <ManagedIcon
+                    name="Clock"
+                    filled={selectedView === "recently-added"}
+                    className="h-4 w-4"
+                  />
                   Recently Added
                 </Button>
               </li>
@@ -87,7 +105,11 @@ export function Sidebar({
                     onFilterSelect(null, null);
                   }}
                 >
-                  <Heart className="h-4 w-4" />
+                  <ManagedIcon
+                    name="Heart"
+                    filled={selectedView === "favorites"}
+                    className="h-4 w-4"
+                  />
                   Favorites
                 </Button>
               </li>
@@ -99,7 +121,7 @@ export function Sidebar({
               Categories
             </p>
             <ul className="min-h-0 flex-1 space-y-3 overflow-y-auto pr-1">
-              {FONT_CATEGORIES.map(({ value, label, icon: Icon, subcategories }) => {
+              {FONT_CATEGORIES.map(({ value, label, icon, subcategories }) => {
                 const isExpanded = expandedCategory === value;
                 const isCategorySelected = selectedCategory === value;
                 const catCount = categoryCounts[value] ?? 0;
@@ -119,11 +141,21 @@ export function Sidebar({
                       }}
                     >
                       {isExpanded ? (
-                        <ChevronDown className="h-4 w-4 shrink-0" />
+                        <ManagedIcon
+                          name="ChevronDown"
+                          className="h-4 w-4 shrink-0"
+                        />
                       ) : (
-                        <ChevronRight className="h-4 w-4 shrink-0" />
+                        <ManagedIcon
+                          name="ChevronRight"
+                          className="h-4 w-4 shrink-0"
+                        />
                       )}
-                      <Icon className="h-4 w-4 shrink-0" />
+                      <ManagedIcon
+                        name={icon}
+                        filled={isCategorySelected}
+                        className="h-4 w-4 shrink-0"
+                      />
                       <span className="min-w-0 flex-1 truncate">{label}</span>
                       {catCount > 0 && (
                         <span className="text-muted-foreground shrink-0 text-xs tabular-nums">
@@ -149,8 +181,7 @@ export function Sidebar({
                         {subcategories.map((sub) => {
                           const count = subCounts[sub] ?? 0;
                           const isSelected =
-                            isCategorySelected &&
-                            selectedSubcategory === sub;
+                            isCategorySelected && selectedSubcategory === sub;
                           return (
                             <Button
                               key={sub}
@@ -174,6 +205,25 @@ export function Sidebar({
                 );
               })}
             </ul>
+          </div>
+
+          <div className="shrink-0 border-t pt-4">
+            <Button
+              variant={selectedView === "pairing" ? "secondary" : "ghost"}
+              className="hover:bg-sidebar-accent hover:text-sidebar-accent-foreground h-9 w-full justify-start gap-3 px-3 font-medium"
+              onClick={() => {
+                setExpandedCategory(null);
+                onViewSelect("pairing");
+                onFilterSelect(null, null);
+              }}
+            >
+              <ManagedIcon
+                name="Link"
+                filled={selectedView === "pairing"}
+                className="h-4 w-4"
+              />
+              Font Pairing
+            </Button>
           </div>
         </nav>
       </div>

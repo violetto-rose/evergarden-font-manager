@@ -110,10 +110,12 @@ export function saveFont(fontData: FontData) {
           version = @version,
           copyright = @copyright
     `);
-    const info = stmt.run(fontData);
-    console.log(`[db] saveFont OK — family="${fontData.family}" changes=${info.changes} lastInsertRowid=${info.lastInsertRowid}`);
+    stmt.run(fontData);
   } catch (e: any) {
-    console.error(`[db] saveFont FAILED — family="${fontData.family}" path="${fontData.file_path}"`, e);
+    console.error(
+      `[db] saveFont FAILED — family="${fontData.family}" path="${fontData.file_path}"`,
+      e
+    );
     throw e;
   }
 }
@@ -322,4 +324,3 @@ export function getRecentFonts(days = 30) {
     )
     .all(cutoff);
 }
-

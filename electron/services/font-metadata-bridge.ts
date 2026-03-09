@@ -18,10 +18,7 @@ function getBridgePath(): string {
 }
 
 function normalizeKey(family: string): string {
-  return family
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, " ");
+  return family.toLowerCase().trim().replace(/\s+/g, " ");
 }
 
 function tagsFromEntry(
@@ -37,9 +34,14 @@ function tagsFromEntry(
     tags.add("monospace");
   if (f.includes("script") || f.includes("cursive")) tags.add("script");
   if (
-    ["arial", "helvetica", "verdana", "tahoma", "georgia", "times new roman"].some(
-      (s) => f.includes(s)
-    )
+    [
+      "arial",
+      "helvetica",
+      "verdana",
+      "tahoma",
+      "georgia",
+      "times new roman",
+    ].some((s) => f.includes(s))
   )
     tags.add("web-safe");
   if (
@@ -91,7 +93,11 @@ export function generateBridgeFromDatabase(): void {
     next[key] = {
       category: row.category || "Basic",
       subcategory: row.subcategory || "Various",
-      tags: tagsFromEntry(row.family, row.category || "Basic", row.subcategory || "Various"),
+      tags: tagsFromEntry(
+        row.family,
+        row.category || "Basic",
+        row.subcategory || "Various"
+      ),
     };
   }
 

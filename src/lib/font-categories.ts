@@ -3,20 +3,12 @@
  * and their subcategories for sidebar filtering.
  */
 
-import type { LucideIcon } from "lucide-react";
-import {
-  Type,
-  PenTool,
-  Sparkles,
-  Globe,
-  Cpu,
-  ScrollText,
-} from "lucide-react";
+import type { IconName } from "@/components/ui/managed-icon";
 
 export interface FontCategoryConfig {
   value: string;
   label: string;
-  icon: LucideIcon;
+  icon: IconName;
   subcategories: string[];
 }
 
@@ -24,7 +16,7 @@ export const FONT_CATEGORIES: FontCategoryConfig[] = [
   {
     value: "Fancy",
     label: "Fancy",
-    icon: Sparkles,
+    icon: "Sparkles",
     subcategories: [
       "Cartoon",
       "Comic",
@@ -49,7 +41,7 @@ export const FONT_CATEGORIES: FontCategoryConfig[] = [
   {
     value: "Foreign look",
     label: "Foreign look",
-    icon: Globe,
+    icon: "Globe",
     subcategories: [
       "Chinese, Jpn",
       "Arabic",
@@ -62,25 +54,25 @@ export const FONT_CATEGORIES: FontCategoryConfig[] = [
   {
     value: "Techno",
     label: "Techno",
-    icon: Cpu,
+    icon: "Cpu",
     subcategories: ["Square", "LCD", "Sci-fi", "Pixel", "Bitmap", "Various"],
   },
   {
     value: "Gothic",
     label: "Gothic",
-    icon: ScrollText,
+    icon: "ScrollText",
     subcategories: ["Medieval", "Modern", "Celtic", "Initials", "Various"],
   },
   {
     value: "Basic",
     label: "Basic",
-    icon: Type,
+    icon: "Type",
     subcategories: ["Sans serif", "Serif", "Fixed width", "Various"],
   },
   {
     value: "Script",
     label: "Script",
-    icon: PenTool,
+    icon: "PenTool",
     subcategories: [
       "Calligraphy",
       "School",

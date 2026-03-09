@@ -23,9 +23,10 @@ interface GoogleFontsMetadata {
 }
 
 /** Map provider category (Google or Fontsource) to our taxonomy. */
-function mapProviderCategoryToOurs(
-  providerCategory: string
-): { category: string; subcategory: string } {
+function mapProviderCategoryToOurs(providerCategory: string): {
+  category: string;
+  subcategory: string;
+} {
   const c = (providerCategory || "").trim().toLowerCase().replace(/-/g, " ");
   switch (c) {
     case "serif":
